@@ -39,7 +39,7 @@ endif
 if HAVE_SWRAST_DRI
 SUBDIRS += swrast
 MEGADRIVERS_DEPS += swrast/libswrast_dri.la
-MEGADRIVERS += swrast_dri.so
+MEGADRIVERS += libswrast_dri.so
 endif
 
 pkgconfigdir = $(libdir)/pkgconfig
