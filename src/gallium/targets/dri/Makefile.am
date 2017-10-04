@@ -25,7 +25,7 @@ gallium_dri_la_LDFLAGS = \
 	-shared \
 	-shrext .so \
 	-module \
-	-no-undefined \
+	#-no-undefined \
 	-avoid-version \
 	$(GC_SECTIONS) \
 	$(LD_NO_UNDEFINED)
