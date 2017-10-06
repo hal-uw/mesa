@@ -36,7 +36,8 @@
 #include "tgsi_info.h"
 #include "tgsi_iterate.h"
 #include "tgsi_strings.h"
-#include "tgsi_exec.h" 
+#include "tgsi_exec.h"
+#include "addons/uthash.h"
 
 
 /** Number of spaces to indent for IF/LOOP/etc */
@@ -1069,18 +1070,19 @@ const char *tgsi_fs_coord_pixel_center_names[2] =
 {
    "HALF_INTEGER",
    "INTEGER"
-};
+};*/
 
-const char *tgsi_immediate_type_names[6] =
+const char *tgsi_immediate_type_names_ptx[6] =
 {
-   "FLT32",
-   "UINT32",
-   "INT32",
-   "FLT64",
-   "UINT64",
-   "INT64",
+   "f32",
+   "u32",
+   "s32",
+   "f64",
+   "u64",
+   "s64",
 };
 
+/*
 const char *tgsi_memory_names[3] =
 {
    "COHERENT",
@@ -1098,6 +1100,14 @@ typedef struct ptx_opcode_type {
   const char* const ptx_type;
   bool is_tex;
 } ptx_opcode_t;
+
+typedef struct register_dic_type {
+    char* reg_key;
+    char* reg_value;
+    UT_hash_handle hh;
+} register_dic_t;
+
+register_dic_t* register_dictionary;
 
 #define OPCODE(_num_dst, _num_src, _output_mode, name, enabled, ptx_type, is_tex, ...) {#name, enabled, _num_dst,  _num_src, #ptx_type, is_tex},
 #define OPCODE_GAP(opc) {"UNK", 0},
@@ -1189,14 +1199,49 @@ get_register_dst_name(
    if(strlen(dstRegName[1]) > 0) free(dstRegName[1]);
    if(strlen(dstRegName[2]) > 0) free(dstRegName[2]);
 
+
+   register_dic_t* dr = NULL;
+   HASH_FIND_STR(register_dictionary, dstRegNameFull, dr);
+   if(dr){
+     free((void*)dstRegNameFull);
+     asprintf(&dstRegNameFull, "%s", dr->reg_value);
+   }
+
    return dstRegNameFull;
 }
 
+static const char* get_src_swizzle(const struct tgsi_full_src_register* src, int position){
+  const char * src_swizzle = src_swizzle = tgsi_swizzle_names[position];
+  switch(position){
+    case 0:
+      if (src->Register.SwizzleX != TGSI_SWIZZLE_X) {
+        src_swizzle =  tgsi_swizzle_names[src->Register.SwizzleX];
+      }
+      break;
+    case 1:
+      if(src->Register.SwizzleY != TGSI_SWIZZLE_Y) {
+        src_swizzle =  tgsi_swizzle_names[src->Register.SwizzleY];
+      }
+      break;
+    case 2:
+      if(src->Register.SwizzleZ != TGSI_SWIZZLE_Z){
+        src_swizzle =  tgsi_swizzle_names[src->Register.SwizzleZ];
+      }
+      break;
+    case 3:
+      if(src->Register.SwizzleW != TGSI_SWIZZLE_W) {
+        src_swizzle =  tgsi_swizzle_names[src->Register.SwizzleW];
+      }
+      break;
+    default: assert("undefined position value!" == 0);
+  }
 
+  return src_swizzle;
+}
 
 static char*
 get_register_src_name(
-   const struct tgsi_full_src_register *src )
+   const struct tgsi_full_src_register *src, int swiz )
 {
    char* srcRegName[3];
    srcRegName[0] = (char*) tgsi_file_name(src->Register.File);
@@ -1257,41 +1302,31 @@ get_register_src_name(
    }
 
    char* srcRegNameFull;
+
+   const char * src_swizzle = get_src_swizzle(src, swiz);
+
    asprintf(&srcRegNameFull, "%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2]);
+
+   register_dic_t* rd = NULL;
+   HASH_FIND_STR(register_dictionary, srcRegNameFull, rd);
+   free((void*) srcRegNameFull);
+   if(rd == NULL){
+     asprintf(&srcRegNameFull, "%s%s%s.%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
+     HASH_FIND_STR(register_dictionary, srcRegNameFull, rd);
+     if(rd){
+       free((void*) srcRegNameFull);
+       asprintf(&srcRegNameFull, "%s", rd->reg_value);
+     }
+   } else {
+     asprintf(&srcRegNameFull, "%s.%s", rd->reg_value, src_swizzle);
+   }
+
    if(strlen(srcRegName[1]) > 0) free(srcRegName[1]);
    if(strlen(srcRegName[2]) > 0) free(srcRegName[2]);
 
    return srcRegNameFull;
 }
 
-static const char* get_src_swizzle(const struct tgsi_full_src_register* src, int position){
-  const char * src_swizzle = src_swizzle = tgsi_swizzle_names[position];
-  switch(position){
-    case 0:
-      if (src->Register.SwizzleX != TGSI_SWIZZLE_X) {
-        src_swizzle =  tgsi_swizzle_names[src->Register.SwizzleX];
-      }
-      break;
-    case 1:
-      if(src->Register.SwizzleY != TGSI_SWIZZLE_Y) {
-        src_swizzle =  tgsi_swizzle_names[src->Register.SwizzleY];
-      }
-      break;
-    case 2:
-      if(src->Register.SwizzleZ != TGSI_SWIZZLE_Z){
-        src_swizzle =  tgsi_swizzle_names[src->Register.SwizzleZ];
-      }
-      break;
-    case 3:
-      if(src->Register.SwizzleW != TGSI_SWIZZLE_W) {
-        src_swizzle =  tgsi_swizzle_names[src->Register.SwizzleW];
-      }
-      break;
-    default: assert("undefined position value!" == 0);
-  }
-
-  return src_swizzle;
-}
 
 //iter_instruction(
 static boolean
@@ -1306,7 +1341,7 @@ gen_ptx_instruction(
    //TXT(ptx_opcode_names[inst->Instruction.Opcode]);
    if(!ptx_opcodes[opcode].enabled){
      printf("TGSI->PTX: instruction %s not supported.\n", ptx_opcodes[opcode].name);
-     abort();
+     assert(0);
    }
 
 
@@ -1317,7 +1352,7 @@ gen_ptx_instruction(
 
    assert(inst->Instruction.NumDstRegs == ptx_opcodes[opcode].num_dst);
 
-   assert(ptx_opcodes[opcode].num_dst == 1);
+   assert(ptx_opcodes[opcode].num_dst <= 1);
    assert(ptx_opcodes[opcode].num_src <= 2);
 
    if (inst->Instruction.Texture) {
@@ -1377,26 +1412,28 @@ gen_ptx_instruction(
 
      assert(inst->Instruction.NumSrcRegs == 2);
      const struct tgsi_full_src_register * tex_sampler = &inst->Src[1];
-     const char* sampler_src_name = get_register_src_name(tex_sampler);
+     //const char* sampler_src_name = get_register_src_name(tex_sampler);
 
-     assert(!strcmp(tgsi_file_name(src->Register.File, "SAMP")));
+     assert(!strcmp(tgsi_file_name(tex_sampler->Register.File), "SAMP"));
 
      printf("[textureReference%d_%s, ",
             tex_sampler->Register.Index, tgsi_texture_names[inst->Texture.Texture]);
 
 
      const struct tgsi_full_src_register * coords_reg = &inst->Src[0];
-     const char* coords_src_name = get_register_src_name(coords_reg);
      int textureDim = tgsi_texture_names_coords[inst->Texture.Texture];
      printf("{ ");
      int sw = 0;
      for(sw =0; sw < textureDim; sw++){
-       const char* swizzle = get_src_swizzle(coords_reg, sw);
-       printf("%s.%s", coords_src_name, swizzle);
+       const char* coords_src_name = get_register_src_name(coords_reg, sw);
+       //const char* swizzle = get_src_swizzle(coords_reg, sw);
+       printf("%s", coords_src_name);
        if(sw != textureDim-1){
          printf(", ");
        } else printf(" }");
+       free((void*) coords_src_name);
      }
+
 
      printf("];\n");
      return TRUE;
@@ -1409,7 +1446,7 @@ gen_ptx_instruction(
    }
 
    //other instruction
-   char srcRegNames[5][20];  //5 max num of src registers
+   char srcRegNames[5][100];  //5 max num of src registers
    char* ptxInst;
    char* satStr = "";
 
@@ -1450,10 +1487,9 @@ gen_ptx_instruction(
 
           //TODO
 
-          const char * src_swizzle = get_src_swizzle(src, maskBit);
-
-          const char* src_name = get_register_src_name(src);
-          snprintf((char*) &srcRegNames[src_i], 20, "%s%s.%s", srcSign, src_name, src_swizzle);
+          //const char * src_swizzle = get_src_swizzle(src, maskBit);
+          const char* src_name = get_register_src_name(src, maskBit);
+          snprintf((char*) &srcRegNames[src_i], 100, "%s%s", srcSign, src_name);
           free((void*)src_name);
 
           //first_reg = FALSE;
@@ -1497,7 +1533,7 @@ gen_ptx_instruction(
    }
 
    if (inst->Instruction.Label) { 
-      assert(0); //TODO
+      assert(0);; //TODO
       switch (inst->Instruction.Opcode) {
       case TGSI_OPCODE_IF:
       case TGSI_OPCODE_UIF:
@@ -1526,7 +1562,7 @@ gen_ptx_instruction(
 
 
 static boolean
-get_ptx_declaration(
+gen_ptx_declaration(
    FILE* inst_stream,
    struct tgsi_iterate_context *iter,
    struct tgsi_full_declaration *decl )
@@ -1540,8 +1576,9 @@ get_ptx_declaration(
 
    const char* file_name = tgsi_file_name(decl->Declaration.File);
 
-   int genDeclFlag = 1;
-   genDeclFlag &= strcmp(file_name, "SVIEW");
+   bool genDeclFlag = true;
+   genDeclFlag = genDeclFlag && strcmp(file_name, "SVIEW");
+   genDeclFlag = genDeclFlag && strcmp(file_name, "SAMP");
 
    if(!genDeclFlag)
      return TRUE;
@@ -1554,7 +1591,7 @@ get_ptx_declaration(
         (!patch &&
          (iter->processor.Processor == PIPE_SHADER_TESS_CTRL ||
           iter->processor.Processor == PIPE_SHADER_TESS_EVAL)))) {
-     assert(0);
+     abort();
       //TXT("[]");
    }
 
@@ -1562,81 +1599,29 @@ get_ptx_declaration(
    if (decl->Declaration.File == TGSI_FILE_OUTPUT &&
        !patch &&
        iter->processor.Processor == PIPE_SHADER_TESS_CTRL) {
-     assert(0);
+     abort();
       //TXT("[]");
    }
 
-   if (decl->Declaration.Dimension) {
-     assert(0);
-      /*CHR('[');
-      SID(decl->Dim.Index2D);
-      CHR(']');*/
-   }
-
-   /*CHR('[');
-   SID(decl->Range.First);
-   if (decl->Range.First != decl->Range.Last) {
-     assert(0);
-      TXT("..");
-      SID(decl->Range.Last);
-   }
-   CHR(']');
-
-     _dump_writemask(
-      ctx,
-      decl->Declaration.UsageMask );*/
-
-
-
-   int regsCount = decl->Range.Last - decl->Range.First + 1;
-   int regNum;
-   uint writemask = decl->Declaration.UsageMask;
-   const char* regDef = ".reg .f32";
-   for(regNum = 0; regNum < regsCount; regNum ++){
-     if (writemask != TGSI_WRITEMASK_XYZW) {
-       if (writemask & TGSI_WRITEMASK_X)
-         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "x");
-       if (writemask & TGSI_WRITEMASK_Y)
-         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "y");
-       if (writemask & TGSI_WRITEMASK_Z)
-         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "z");
-       if (writemask & TGSI_WRITEMASK_W)
-         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "w");
-     } else {
-       printf("%s %s%d.%s;\n", regDef, file_name, regNum, "x");
-       printf("%s %s%d.%s;\n", regDef, file_name, regNum, "y");
-       printf("%s %s%d.%s;\n", regDef, file_name, regNum, "z");
-       printf("%s %s%d.%s;\n", regDef, file_name, regNum, "w");
-     }
-   }
-
-
-   if (decl->Declaration.Array) {
-      assert(0);
-      /*TXT( ", ARRAY(" );
-      SID(decl->Array.ArrayID);
-      CHR(')');*/
-   }
-
-   if (decl->Declaration.Local){
-      assert(0);
-      //TXT( ", LOCAL" );
-   }
+   bool replace_reg = false;
+   char* replace_reg_name = NULL;
 
    if (decl->Declaration.Semantic) {
-     assert(0);
-      /*TXT( ", " );
-      ENM( decl->Semantic.Name, tgsi_semantic_names );
+      replace_reg = true;
+      //register_dic_t* sd = (struct register_dic_t*) malloc(sizeof(struct register_dic_t));
       if (decl->Semantic.Index != 0 ||
           decl->Semantic.Name == TGSI_SEMANTIC_TEXCOORD ||
           decl->Semantic.Name == TGSI_SEMANTIC_GENERIC) {
-         CHR( '[' );
-         UID( decl->Semantic.Index );
-         CHR( ']' );
+         //asprintf(&sd->reg_key, "%s%d", tgsi_semantic_names[decl->Semantic.Name], decl->Semantic.Index );
+         asprintf(&replace_reg_name, "%s%d", tgsi_semantic_names[decl->Semantic.Name], decl->Semantic.Index );
+      } else {
+         //asprintf(&sd->reg_key, "%s", tgsi_semantic_names[decl->Semantic.Name]);
+         asprintf(&replace_reg_name, "%s", tgsi_semantic_names[decl->Semantic.Name]);
       }
 
       if (decl->Semantic.StreamX != 0 || decl->Semantic.StreamY != 0 ||
           decl->Semantic.StreamZ != 0 || decl->Semantic.StreamW != 0) {
+         abort();
          TXT(", STREAM(");
          UID(decl->Semantic.StreamX);
          TXT(", ");
@@ -1646,11 +1631,81 @@ get_ptx_declaration(
          TXT(", ");
          UID(decl->Semantic.StreamW);
          CHR(')');
-      }*/
+      }
+
    }
 
+   if (decl->Declaration.Dimension) {
+      /*CHR('[');
+      SID(decl->Dim.Index2D);
+      CHR(']');*/
+   }
+
+   /*CHR('[');
+   SID(decl->Range.First);
+   if (decl->Range.First != decl->Range.Last) {
+     abort();
+      TXT("..");
+      SID(decl->Range.Last);
+   }
+   CHR(']');
+
+     _dump_writemask(
+      ctx,
+      decl->Declaration.UsageMask );*/
+
+   int regsCount = decl->Range.Last - decl->Range.First + 1;
+   int regNum;
+   uint writemask = decl->Declaration.UsageMask;
+   const char* regDef = ".reg .f32";
+   if(replace_reg) {
+     if(regsCount != 1){
+       abort(); //unexpected case
+     }
+     register_dic_t* sd = (register_dic_t*) malloc(sizeof(register_dic_t));
+     asprintf(&sd->reg_key, "%s%d", file_name, decl->Range.First);
+     sd->reg_value = replace_reg_name;
+
+     HASH_ADD_KEYPTR( hh, register_dictionary, sd->reg_key, strlen(sd->reg_key), sd );
+     //printf("replacing %s with %s\n", sd->reg_key, sd->reg_value);
+   } else {
+     for(regNum = 0; regNum < regsCount; regNum ++){
+       if (writemask != TGSI_WRITEMASK_XYZW) {
+         if (writemask & TGSI_WRITEMASK_X)
+           printf("%s %s%d.%s;\n", regDef, file_name, regNum, "x");
+         if (writemask & TGSI_WRITEMASK_Y)
+           printf("%s %s%d.%s;\n", regDef, file_name, regNum, "y");
+         if (writemask & TGSI_WRITEMASK_Z)
+           printf("%s %s%d.%s;\n", regDef, file_name, regNum, "z");
+         if (writemask & TGSI_WRITEMASK_W)
+           printf("%s %s%d.%s;\n", regDef, file_name, regNum, "w");
+       } else {
+         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "x");
+         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "y");
+         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "z");
+         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "w");
+       }
+     }
+   }
+
+
+   if (decl->Declaration.Array) {
+      abort();
+      /*TXT( ", ARRAY(" );
+      SID(decl->Array.ArrayID);
+      CHR(')');*/
+   }
+
+
+   //no need to identify interpolates
+   /*if (decl->Declaration.Local){
+      abort();
+      TXT( ", LOCAL" );
+   }*/
+
+
    if (decl->Declaration.File == TGSI_FILE_IMAGE) {
-     assert(0);
+     abort();
       /*TXT(", ");
       ENM(decl->Image.Resource, tgsi_texture_names);
       TXT(", ");
@@ -1662,13 +1717,13 @@ get_ptx_declaration(
    }
 
    if (decl->Declaration.File == TGSI_FILE_BUFFER) {
-     assert(0);
+     abort();
       /*if (decl->Declaration.Atomic)
          TXT(", ATOMIC");*/
    }
 
    if (decl->Declaration.File == TGSI_FILE_MEMORY) {
-     assert(0);
+     abort();
       /*switch (decl->Declaration.MemType) {
       //Note: ,GLOBAL is optional / the default
       case TGSI_MEMORY_TYPE_GLOBAL:  TXT(", GLOBAL");  break;
@@ -1680,7 +1735,7 @@ get_ptx_declaration(
    }
 
    if (decl->Declaration.File == TGSI_FILE_SAMPLER_VIEW) {
-     assert(0);
+     abort();
       /*TXT(", ");
       ENM(decl->SamplerView.Resource, tgsi_texture_names);
       TXT(", ");
@@ -1699,9 +1754,10 @@ get_ptx_declaration(
       }*/
    }
 
-   if (decl->Declaration.Interpolate) {
-     assert(0);
-      /*if (iter->processor.Processor == PIPE_SHADER_FRAGMENT &&
+
+   //no need to identify interpolates
+   /*if (decl->Declaration.Interpolate) {
+      if (iter->processor.Processor == PIPE_SHADER_FRAGMENT &&
           decl->Declaration.File == TGSI_FILE_INPUT)
       {
          TXT( ", " );
@@ -1728,15 +1784,96 @@ get_ptx_declaration(
             CHR('W');
          }
       }
-      */
-   }
+      
+   }*/
 
    if (decl->Declaration.Invariant) {
-      assert(0);
+      abort();
       //TXT( ", INVARIANT" );
    }
 
    //EOL();
+
+   return TRUE;
+}
+
+
+
+static boolean
+gen_ptx_immediate(
+   FILE* inst_stream,
+   struct tgsi_iterate_context *iter,
+   struct tgsi_full_immediate *imm )
+{
+   struct dump_ctx *ctx = (struct dump_ctx *) iter;
+   int im_id = ctx->immno++;
+
+   /*dump_imm_data(iter, imm->u, imm->Immediate.NrTokens - 1,
+                 imm->Immediate.DataType);
+
+  dump_imm_data(struct tgsi_iterate_context *iter,
+              union tgsi_immediate_data *data,
+              unsigned num_tokens,
+              unsigned data_type)*/
+
+   unsigned num_tokens = imm->Immediate.NrTokens - 1;
+   unsigned i ;
+
+   assert( num_tokens <= 4 );
+   for (i = 0; i < num_tokens; i++) {
+      char* imm_name;
+      asprintf(&imm_name, "%s%d.%s", "IMM", im_id, tgsi_swizzle_names[i]);
+      //const char* imm_type =  tgsi_immediate_type_names_ptx[imm->Immediate.DataType];
+      register_dic_t* sd = (register_dic_t*) malloc(sizeof(register_dic_t));
+
+      sd->reg_key = imm_name;
+      //sd->reg_value = replace_reg_name;
+
+      switch (imm->Immediate.DataType) {
+      case TGSI_IMM_FLOAT64: {
+         union di d;
+         d.ui = imm->u[i].Uint | (uint64_t)imm->u[i+1].Uint << 32;
+         //DBL( d.d );
+         asprintf(&sd->reg_value, "0f%lx", d.ui);
+         //printf("replacing %s with %s\n", sd->reg_key, sd->reg_value);
+         i++;
+         break;
+      }
+      case TGSI_IMM_INT64:
+      case TGSI_IMM_UINT64: {
+         union di d;
+         d.ui = imm->u[i].Uint | (uint64_t)imm->u[i+1].Uint << 32;
+         //UI64D( d.ui );
+         asprintf(&sd->reg_value, "0x%lx", d.ui);
+         //printf("replacing %s with %s\n", sd->reg_key, sd->reg_value);
+         i++;
+         break;
+      }
+      case TGSI_IMM_FLOAT32:{
+         union di d;
+         d.ui = imm->u[i].Uint;
+         asprintf(&sd->reg_value, "0f%x", d.ui);
+         //printf("replacing %s with %s\n", sd->reg_key, sd->reg_value);
+         break;
+      }
+      case TGSI_IMM_UINT32:{
+         union di d;
+         d.ui = imm->u[i].Uint;
+         asprintf(&sd->reg_value, "0x%x", d.ui);
+         //printf("replacing %s with %s\n", sd->reg_key, sd->reg_value);
+         break;
+      }
+      default:
+         assert( 0 );
+      }
+
+      HASH_ADD_KEYPTR( hh, register_dictionary, sd->reg_key, strlen(sd->reg_key), sd );
+
+
+      //if (i < num_tokens - 1)
+      //   TXT( ", " );
+   }
+   //TXT( "}" );
 
    return TRUE;
 }
@@ -1777,20 +1914,19 @@ generate_tgsi_ptx_code(
         break;
 
       case TGSI_TOKEN_TYPE_DECLARATION:
-         get_ptx_declaration(mid_inst_stream, &ctx.iter, &parse.FullToken.FullDeclaration );
+         gen_ptx_declaration(mid_inst_stream, &ctx.iter, &parse.FullToken.FullDeclaration );
          break;
 
-      /*case TGSI_TOKEN_TYPE_IMMEDIATE:
-         if (ctx->iterate_immediate)
-            if (!ctx->iterate_immediate( ctx, &parse.FullToken.FullImmediate ))
-               goto fail;
+      case TGSI_TOKEN_TYPE_IMMEDIATE:
+         gen_ptx_immediate(mid_inst_stream, &ctx.iter, &parse.FullToken.FullImmediate );
          break;
 
       case TGSI_TOKEN_TYPE_PROPERTY:
-         if (ctx->iterate_property)
+         printf("TGSI to PTX: ignoring property\n");
+         /*if (ctx->iterate_property)
             if (!ctx->iterate_property( ctx,  &parse.FullToken.FullProperty ))
-               goto fail;
-         break;*/
+               goto fail;*/
+         break;
 
       default:
          assert( 0 );
