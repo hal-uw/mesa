@@ -1134,7 +1134,7 @@ static const ptx_opcode_t ptx_opcodes [] = //[TGSI_OPCODE_LAST] =
 
 static char*
 get_register_dst_name(
-   const struct tgsi_full_dst_register *dst )
+   const struct tgsi_full_dst_register *dst, int swiz)
 {
    char* dstRegName[3];
    dstRegName[0] = (char*) tgsi_file_name(dst->Register.File);
@@ -1194,19 +1194,25 @@ get_register_dst_name(
       asprintf(&dstRegName[2], "%d", dst->Register.Index);
    }
 
+
    char* dstRegNameFull;
    asprintf(&dstRegNameFull, "%s%s%s", dstRegName[0], dstRegName[1], dstRegName[2]);
-   if(strlen(dstRegName[1]) > 0) free(dstRegName[1]);
-   if(strlen(dstRegName[2]) > 0) free(dstRegName[2]);
 
 
    register_dic_t* dr = NULL;
    HASH_FIND_STR(register_dictionary, dstRegNameFull, dr);
+
+   const char* dst_swizzle = tgsi_swizzle_names[swiz];
+
+   free((void*)dstRegNameFull);
    if(dr){
-     free((void*)dstRegNameFull);
-     asprintf(&dstRegNameFull, "%s", dr->reg_value);
+     asprintf(&dstRegNameFull, "%s.%s", dr->reg_value, dst_swizzle);
+   } else {
+     asprintf(&dstRegNameFull, "%s%s%s%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
    }
 
+   if(strlen(dstRegName[1]) > 0) free(dstRegName[1]);
+   if(strlen(dstRegName[2]) > 0) free(dstRegName[2]);
    return dstRegNameFull;
 }
 
@@ -1311,7 +1317,7 @@ get_register_src_name(
    HASH_FIND_STR(register_dictionary, srcRegNameFull, rd);
    free((void*) srcRegNameFull);
    if(rd == NULL){
-     asprintf(&srcRegNameFull, "%s%s%s.%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
+     asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
      HASH_FIND_STR(register_dictionary, srcRegNameFull, rd);
      if(rd){
        free((void*) srcRegNameFull);
@@ -1376,7 +1382,6 @@ gen_ptx_instruction(
 
      assert(inst->Instruction.NumDstRegs == 1);
      const struct tgsi_full_dst_register *dst = &inst->Dst[0];
-     char* dstRegName = (char*)get_register_dst_name( dst );
      uint writeMask = dst->Register.WriteMask;
 
      int dstCount = 0;
@@ -1386,27 +1391,29 @@ gen_ptx_instruction(
      }
 
      assert(dstCount >=0 && dstCount <= 4);
-     printf("%s", ptx_opcodes[opcode].name);
-     if(strlen(textureType) > 0) printf(".%s", textureType);
-     printf(".v%d ", dstCount);
+     fprintf(inst_stream, "%s", ptx_opcodes[opcode].name);
+     if(strlen(textureType) > 0)
+       fprintf(inst_stream, ".%s", textureType);
+     fprintf(inst_stream, ".v%d ", dstCount);
 
      writeMask = dst->Register.WriteMask;
      int maskBit = -1;
-     printf("{ ");
+     fprintf(inst_stream, "{ ");
      while(writeMask) {
        maskBit++;
        bool enabled = (1 & writeMask) != 0;
        writeMask >>= 1;
        if(!enabled) continue;
 
-       const char* dst_swizzle = tgsi_swizzle_names[maskBit];
+      // const char* dst_swizzle = tgsi_swizzle_names[maskBit];
+       char* dstRegName = (char*)get_register_dst_name( dst, maskBit);
 
-       printf("%s.%s ", dstRegName, dst_swizzle);
+       fprintf(inst_stream, "%s ", dstRegName);
        if(writeMask)
-         printf(", ");
+         fprintf(inst_stream, ", ");
 
      }
-     printf(" }, ");
+     fprintf(inst_stream, " }, ");
 
 
 
@@ -1416,32 +1423,32 @@ gen_ptx_instruction(
 
      assert(!strcmp(tgsi_file_name(tex_sampler->Register.File), "SAMP"));
 
-     printf("[textureReference%d_%s, ",
+     fprintf(inst_stream, "[textureReference%d_%s, ",
             tex_sampler->Register.Index, tgsi_texture_names[inst->Texture.Texture]);
 
 
      const struct tgsi_full_src_register * coords_reg = &inst->Src[0];
      int textureDim = tgsi_texture_names_coords[inst->Texture.Texture];
-     printf("{ ");
+     fprintf(inst_stream, "{ ");
      int sw = 0;
      for(sw =0; sw < textureDim; sw++){
        const char* coords_src_name = get_register_src_name(coords_reg, sw);
        //const char* swizzle = get_src_swizzle(coords_reg, sw);
-       printf("%s", coords_src_name);
+       fprintf(inst_stream, "%s", coords_src_name);
        if(sw != textureDim-1){
-         printf(", ");
-       } else printf(" }");
+         fprintf(inst_stream, ", ");
+       } else fprintf(inst_stream, " }");
        free((void*) coords_src_name);
      }
 
 
-     printf("];\n");
+     fprintf(inst_stream, "];\n");
      return TRUE;
    }
 
    //e.g., exit, kill ..etc
    if(inst->Instruction.NumDstRegs==0 && inst->Instruction.NumSrcRegs==0){
-     printf("%s;\n", ptx_opcodes[opcode].name);
+     fprintf(inst_stream, "%s;\n", ptx_opcodes[opcode].name);
      return TRUE;;
    }
 
@@ -1459,7 +1466,6 @@ gen_ptx_instruction(
    for (dst_i = 0; dst_i < inst->Instruction.NumDstRegs; dst_i++) {
       const struct tgsi_full_dst_register *dst = &inst->Dst[dst_i];
 
-      char* dstRegName = (char*)get_register_dst_name( dst );
       uint writeMask = dst->Register.WriteMask;
 
       int maskBit = -1;
@@ -1496,14 +1502,14 @@ gen_ptx_instruction(
 
         }//end for srcs
 
-        const char* dst_swizzle = tgsi_swizzle_names[maskBit];
+        //const char* dst_swizzle = tgsi_swizzle_names[maskBit];
 
-
-        printf("%s %s.%s", ptxInst, dstRegName, dst_swizzle);
+        char* dstRegName = (char*)get_register_dst_name( dst, maskBit);
+        fprintf(inst_stream, "%s %s", ptxInst, dstRegName);
         for (src_i = 0; src_i < inst->Instruction.NumSrcRegs; src_i++) {
-          printf(", %s", srcRegNames[src_i]);
+          fprintf(inst_stream, ", %s", srcRegNames[src_i]);
         }
-        printf(";\n");
+        fprintf(inst_stream, ";\n");
 
       }//end while
 
@@ -1672,18 +1678,18 @@ gen_ptx_declaration(
      for(regNum = 0; regNum < regsCount; regNum ++){
        if (writemask != TGSI_WRITEMASK_XYZW) {
          if (writemask & TGSI_WRITEMASK_X)
-           printf("%s %s%d.%s;\n", regDef, file_name, regNum, "x");
+           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "x");
          if (writemask & TGSI_WRITEMASK_Y)
-           printf("%s %s%d.%s;\n", regDef, file_name, regNum, "y");
+           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "y");
          if (writemask & TGSI_WRITEMASK_Z)
-           printf("%s %s%d.%s;\n", regDef, file_name, regNum, "z");
+           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "z");
          if (writemask & TGSI_WRITEMASK_W)
-           printf("%s %s%d.%s;\n", regDef, file_name, regNum, "w");
+           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "w");
        } else {
-         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "x");
-         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "y");
-         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "z");
-         printf("%s %s%d.%s;\n", regDef, file_name, regNum, "w");
+         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "x");
+         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "y");
+         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "z");
+         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "w");
        }
      }
    }
@@ -1822,7 +1828,7 @@ gen_ptx_immediate(
    assert( num_tokens <= 4 );
    for (i = 0; i < num_tokens; i++) {
       char* imm_name;
-      asprintf(&imm_name, "%s%d.%s", "IMM", im_id, tgsi_swizzle_names[i]);
+      asprintf(&imm_name, "%s%d%s", "IMM", im_id, tgsi_swizzle_names[i]);
       //const char* imm_type =  tgsi_immediate_type_names_ptx[imm->Immediate.DataType];
       register_dic_t* sd = (register_dic_t*) malloc(sizeof(register_dic_t));
 
@@ -1879,6 +1885,19 @@ gen_ptx_immediate(
 }
 
 
+static void print_ptx_head(FILE* inst_stream, int drawcallNum){
+  fprintf(inst_stream, ".entry fp%d (.param .u64 __cudaparm_fp12_outputData){\n", drawcallNum);
+  fprintf(inst_stream, ".reg .pred pexit;\n");
+  fprintf(inst_stream, "setp.eq.u32 pexit, 0, %%fragment_active;\n");
+  fprintf(inst_stream, "@pexit exit;\n");
+}
+
+
+
+static void print_ptx_tail(FILE* inst_stream){
+  fprintf(inst_stream, "\n}");
+}
+
 char*
 generate_tgsi_ptx_code(
    const struct tgsi_token *tokens,
@@ -1890,9 +1909,14 @@ generate_tgsi_ptx_code(
    memset(&ctx, 0, sizeof(ctx));
    init_dump_ctx(&ctx, 0);
 
+   int shaderNum = 0;
+
    char* mid_inst_str;
    size_t mid_inst_size;
    FILE* mid_inst_stream = open_memstream(&mid_inst_str, &mid_inst_size);
+
+
+   print_ptx_head(mid_inst_stream, shaderNum);
 
    struct tgsi_parse_context parse;
 
@@ -1939,5 +1963,14 @@ generate_tgsi_ptx_code(
 
    /*tgsi_parse_free( &parse );
    return TRUE;*/
+
+   print_ptx_tail(mid_inst_stream);
+
+   fclose(mid_inst_stream);
+
+   printf("dump start\n");
+   printf("%s", mid_inst_str);
+   printf("dump end\n");
+
    return NULL;
 }
