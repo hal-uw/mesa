@@ -1093,6 +1093,13 @@ const char *tgsi_memory_names[3] =
 */
 
 
+extern void gpgpusimSetShaderRegs(int shader_type, int usedRegs);
+extern void gpgpusimSetShaderCode(int shader_type, int usedRegs);
+
+typedef struct shader_stats_type {
+  int usedRegs;
+} shader_stats_t;
+
 typedef struct ptx_opcode_type {
   const char* const name;
   int enabled;
@@ -1572,7 +1579,8 @@ static boolean
 gen_ptx_declaration(
    FILE* inst_stream,
    struct tgsi_iterate_context *iter,
-   struct tgsi_full_declaration *decl )
+   struct tgsi_full_declaration *decl,
+   shader_stats_t* shader_stats)
 {
    boolean patch = decl->Semantic.Name == TGSI_SEMANTIC_PATCH ||
       decl->Semantic.Name == TGSI_SEMANTIC_TESSINNER ||
@@ -1589,6 +1597,10 @@ gen_ptx_declaration(
 
    if(!genDeclFlag)
      return TRUE;
+
+   if(!strcmp(file_name, "TEMP")){
+     shader_stats->usedRegs++;
+   }
 
    /* all geometry shader inputs and non-patch tessellation shader inputs are
     * two dimensional
@@ -1888,7 +1900,8 @@ gen_ptx_immediate(
 
 static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int drawcall_num){
   if(shader_type == GL_FRAGMENT_SHADER) {
-    fprintf(inst_stream, ".entry fp%d_%d (.param .u64 __cudaparm_fp%d_outputData){\n", frame_num, drawcall_num, frame_num, drawcall_num);
+    fprintf(inst_stream, ".entry fp%d_%d (.param .u64 __cudaparm_fp%d_%d_outputData){\n",
+            frame_num, drawcall_num, frame_num, drawcall_num);
     fprintf(inst_stream, ".reg .pred pexit;\n");
     fprintf(inst_stream, "setp.eq.u32 pexit, 0, %%fragment_active;\n");
     fprintf(inst_stream, "@pexit exit;\n");
@@ -1904,12 +1917,14 @@ static void print_ptx_tail(FILE* inst_stream){
   fprintf(inst_stream, "\n}");
 }
 
+
 char*
 generate_tgsi_ptx_code(
    const struct tgsi_token *tokens,
    int shader_type,
    int frame_num,
-   int drawcall_num)
+   int drawcall_num, 
+   const char* output_dir)
 {
    tgsi_dump_to_file(tokens, 0, NULL);
 
@@ -1924,18 +1939,17 @@ generate_tgsi_ptx_code(
 
    char* file_name;
    if(shader_type == GL_FRAGMENT_SHADER){
-     asprintf(&file_name, "fragment_shader%d_%d", frame_num, drawcall_num);
+     asprintf(&file_name, "%s/gpgpusimShaders/fragment_shader%d_%d.ptx", output_dir, frame_num, drawcall_num);
    } else if(shader_type == GL_VERTEX_SHADER) {
-     asprintf(&file_name, "vertex_shader%d_%d", frame_num, drawcall_num);
+     asprintf(&file_name, "%s/gpgpusimShaders/vertex_shader%d_%d.ptx", output_dir, frame_num, drawcall_num);
    } else {
      printf("Unsupported shader type %d\n", shader_type);
    }
 
    FILE* mid_inst_stream = fopen(file_name, "w");
-
-
-
    struct tgsi_parse_context parse;
+   shader_stats_t shader_stats;
+   shader_stats.usedRegs = 0;
 
    if (tgsi_parse_init( &parse, tokens ) != TGSI_PARSE_OK)
       return FALSE;
@@ -1957,7 +1971,7 @@ generate_tgsi_ptx_code(
         break;
 
       case TGSI_TOKEN_TYPE_DECLARATION:
-         gen_ptx_declaration(mid_inst_stream, &ctx.iter, &parse.FullToken.FullDeclaration );
+         gen_ptx_declaration(mid_inst_stream, &ctx.iter, &parse.FullToken.FullDeclaration, &shader_stats);
          break;
 
       case TGSI_TOKEN_TYPE_IMMEDIATE:
@@ -1965,7 +1979,8 @@ generate_tgsi_ptx_code(
          break;
 
       case TGSI_TOKEN_TYPE_PROPERTY:
-         printf("TGSI to PTX: ignoring property\n");
+         printf("TGSI to PTX: ignoring property %s\n",
+                tgsi_property_names[parse.FullToken.FullProperty.Property.PropertyName]);
          /*if (ctx->iterate_property)
             if (!ctx->iterate_property( ctx,  &parse.FullToken.FullProperty ))
                goto fail;*/
@@ -1987,7 +2002,11 @@ generate_tgsi_ptx_code(
 
    fclose(mid_inst_stream);
 
+   free((void*) file_name);
+
    //printf("%s", mid_inst_str);
+
+   gpgpusimSetShaderRegs(shader_type, shader_stats.usedRegs);
 
    return NULL;
 }
