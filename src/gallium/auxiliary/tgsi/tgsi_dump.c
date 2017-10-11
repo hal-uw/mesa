@@ -38,6 +38,7 @@
 #include "tgsi_strings.h"
 #include "tgsi_exec.h"
 #include "addons/uthash.h"
+#include "GL/glcorearb.h"
 
 
 /** Number of spaces to indent for IF/LOOP/etc */
@@ -1346,7 +1347,7 @@ gen_ptx_instruction(
 
    //TXT(ptx_opcode_names[inst->Instruction.Opcode]);
    if(!ptx_opcodes[opcode].enabled){
-     printf("TGSI->PTX: instruction %s not supported.\n", ptx_opcodes[opcode].name);
+     printf("TGSI to PTX: instruction %s not supported.\n", ptx_opcodes[opcode].name);
      assert(0);
    }
 
@@ -1885,14 +1886,19 @@ gen_ptx_immediate(
 }
 
 
-static void print_ptx_head(FILE* inst_stream, int drawcallNum){
-  fprintf(inst_stream, ".entry fp%d (.param .u64 __cudaparm_fp12_outputData){\n", drawcallNum);
-  fprintf(inst_stream, ".reg .pred pexit;\n");
-  fprintf(inst_stream, "setp.eq.u32 pexit, 0, %%fragment_active;\n");
-  fprintf(inst_stream, "@pexit exit;\n");
+static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int drawcall_num){
+  if(shader_type == GL_FRAGMENT_SHADER) {
+    fprintf(inst_stream, ".entry fp%d_%d (.param .u64 __cudaparm_fp%d_outputData){\n", frame_num, drawcall_num, frame_num, drawcall_num);
+    fprintf(inst_stream, ".reg .pred pexit;\n");
+    fprintf(inst_stream, "setp.eq.u32 pexit, 0, %%fragment_active;\n");
+    fprintf(inst_stream, "@pexit exit;\n");
+  } else if(shader_type == GL_VERTEX_SHADER) {
+    assert(0);
+  } else {
+    printf("TGSI to PTX: unsupported shader type %d\n", shader_type);
+    abort();
+  }
 }
-
-
 
 static void print_ptx_tail(FILE* inst_stream){
   fprintf(inst_stream, "\n}");
@@ -1901,7 +1907,9 @@ static void print_ptx_tail(FILE* inst_stream){
 char*
 generate_tgsi_ptx_code(
    const struct tgsi_token *tokens,
-   int shaderType)
+   int shader_type,
+   int frame_num,
+   int drawcall_num)
 {
    tgsi_dump_to_file(tokens, 0, NULL);
 
@@ -1909,19 +1917,30 @@ generate_tgsi_ptx_code(
    memset(&ctx, 0, sizeof(ctx));
    init_dump_ctx(&ctx, 0);
 
-   int shaderNum = 0;
 
-   char* mid_inst_str;
-   size_t mid_inst_size;
-   FILE* mid_inst_stream = open_memstream(&mid_inst_str, &mid_inst_size);
+   //char* mid_inst_str;
+   //size_t mid_inst_size;
+   //FILE* mid_inst_stream = open_memstream(&mid_inst_str, &mid_inst_size);
+
+   char* file_name;
+   if(shader_type == GL_FRAGMENT_SHADER){
+     asprintf(&file_name, "fragment_shader%d_%d", frame_num, drawcall_num);
+   } else if(shader_type == GL_VERTEX_SHADER) {
+     asprintf(&file_name, "vertex_shader%d_%d", frame_num, drawcall_num);
+   } else {
+     printf("Unsupported shader type %d\n", shader_type);
+   }
+
+   FILE* mid_inst_stream = fopen(file_name, "w");
 
 
-   print_ptx_head(mid_inst_stream, shaderNum);
 
    struct tgsi_parse_context parse;
 
    if (tgsi_parse_init( &parse, tokens ) != TGSI_PARSE_OK)
       return FALSE;
+
+   add_ptx_head(mid_inst_stream, shader_type, frame_num, drawcall_num);
 
    /*ctx->processor = parse.FullHeader.Processor;
 
@@ -1968,9 +1987,7 @@ generate_tgsi_ptx_code(
 
    fclose(mid_inst_stream);
 
-   printf("dump start\n");
-   printf("%s", mid_inst_str);
-   printf("dump end\n");
+   //printf("%s", mid_inst_str);
 
    return NULL;
 }
