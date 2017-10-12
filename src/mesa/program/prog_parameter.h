@@ -40,19 +40,6 @@
 extern "C" {
 #endif
 
-
-/**
- * Actual data for constant values of parameters.
- */
-typedef union gl_constant_value
-{
-   GLfloat f;
-   GLint b;
-   GLint i;
-   GLuint u;
-} gl_constant_value;
-
-
 /**
  * Program parameter.
  * Used by shaders/programs for uniforms, constants, varying vars, etc.
