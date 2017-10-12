@@ -1213,11 +1213,24 @@ get_register_dst_name(
    const char* dst_swizzle = tgsi_swizzle_names[swiz];
 
    free((void*)dstRegNameFull);
-   if(dr){
-     asprintf(&dstRegNameFull, "%s.%s", dr->reg_value, dst_swizzle);
+
+
+   bool special_reg = false;
+   if(!strcmp(dstRegName[0], "OUT")) {
+     special_reg = true;
+   }
+
+   if(special_reg){
+     asprintf(&dstRegNameFull, "%s%s%s.%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
    } else {
      asprintf(&dstRegNameFull, "%s%s%s%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
    }
+
+   /*if(dr){
+     asprintf(&dstRegNameFull, "%s.%s", dr->reg_value, dst_swizzle);
+   } else {
+     asprintf(&dstRegNameFull, "%s%s%s%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
+   }*/
 
    if(strlen(dstRegName[1]) > 0) free(dstRegName[1]);
    if(strlen(dstRegName[2]) > 0) free(dstRegName[2]);
@@ -1324,7 +1337,19 @@ get_register_src_name(
    register_dic_t* rd = NULL;
    HASH_FIND_STR(register_dictionary, srcRegNameFull, rd);
    free((void*) srcRegNameFull);
-   if(rd == NULL){
+
+
+   bool special_reg = false;
+   if(!strcmp(srcRegName[0], "IN")){
+     special_reg = true;
+   }
+
+   if(special_reg){
+     asprintf(&srcRegNameFull, "%s%s%s.%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
+   } else {
+     asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
+   }
+   /*if(rd == NULL){
      asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
      HASH_FIND_STR(register_dictionary, srcRegNameFull, rd);
      if(rd){
@@ -1333,7 +1358,7 @@ get_register_src_name(
      }
    } else {
      asprintf(&srcRegNameFull, "%s.%s", rd->reg_value, src_swizzle);
-   }
+   }*/
 
    if(strlen(srcRegName[1]) > 0) free(srcRegName[1]);
    if(strlen(srcRegName[2]) > 0) free(srcRegName[2]);
