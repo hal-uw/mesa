@@ -1347,18 +1347,18 @@ get_register_src_name(
    if(special_reg){
      asprintf(&srcRegNameFull, "%s%s%s.%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
    } else {
-     asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
-   }
-   /*if(rd == NULL){
-     asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
-     HASH_FIND_STR(register_dictionary, srcRegNameFull, rd);
-     if(rd){
-       free((void*) srcRegNameFull);
-       asprintf(&srcRegNameFull, "%s", rd->reg_value);
+     //asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
+     if(rd == NULL){
+       asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
+       HASH_FIND_STR(register_dictionary, srcRegNameFull, rd);
+       if(rd){
+         free((void*) srcRegNameFull);
+         asprintf(&srcRegNameFull, "%s", rd->reg_value);
+       }
+     } else {
+       asprintf(&srcRegNameFull, "%s.%s", rd->reg_value, src_swizzle);
      }
-   } else {
-     asprintf(&srcRegNameFull, "%s.%s", rd->reg_value, src_swizzle);
-   }*/
+   }
 
    if(strlen(srcRegName[1]) > 0) free(srcRegName[1]);
    if(strlen(srcRegName[2]) > 0) free(srcRegName[2]);
