@@ -964,7 +964,6 @@ const char *tgsi_texture_names_ptx[TGSI_TEXTURE_COUNT] =
    "UNKNOWN",
 };
 
-
 const int tgsi_texture_names_coords[TGSI_TEXTURE_COUNT] =
 {
    0, //"BUFFER",
@@ -1427,7 +1426,7 @@ gen_ptx_instruction(
      fprintf(inst_stream, "%s", ptx_opcodes[opcode].name);
      if(strlen(textureType) > 0)
        fprintf(inst_stream, ".%s", textureType);
-     fprintf(inst_stream, ".v%d ", dstCount);
+     fprintf(inst_stream, ".v%d.f32.u32 ", dstCount);
 
      writeMask = dst->Register.WriteMask;
      int maskBit = -1;
@@ -1456,9 +1455,11 @@ gen_ptx_instruction(
 
      assert(!strcmp(tgsi_file_name(tex_sampler->Register.File), "SAMP"));
 
-     fprintf(inst_stream, "[textureReference%d_%s, ",
-            tex_sampler->Register.Index, tgsi_texture_names[inst->Texture.Texture]);
+     /*fprintf(inst_stream, "[textureReference%d_%s, ",
+            tex_sampler->Register.Index, tgsi_texture_names[inst->Texture.Texture]);*/
 
+     fprintf(inst_stream, "[TGSI_SAMP_%d, ",
+            tex_sampler->Register.Index);
 
      const struct tgsi_full_src_register * coords_reg = &inst->Src[0];
      int textureDim = tgsi_texture_names_coords[inst->Texture.Texture];
@@ -1924,6 +1925,16 @@ gen_ptx_immediate(
 
 
 static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int drawcall_num){
+    
+  fprintf(inst_stream, ".version 2.0\n");
+  fprintf(inst_stream, ".target sm_10, map_f64_to_f32\n");
+  fprintf(inst_stream, "\n\n");
+
+  int sampler;
+  for(sampler = 0; sampler < PIPE_MAX_SHADER_SAMPLER_VIEWS; sampler++){
+    fprintf(inst_stream, ".reg .f32 TGSI_SAMP_%d; //dummy sampler def\n", sampler);
+  }
+
   if(shader_type == GL_FRAGMENT_SHADER) {
     fprintf(inst_stream, ".entry fp%d_%d (.param .u64 __cudaparm_fp%d_%d_outputData){\n",
             frame_num, drawcall_num, frame_num, drawcall_num);
@@ -1948,11 +1959,9 @@ generate_tgsi_ptx_code(
    const struct tgsi_token *tokens,
    int shader_type,
    int frame_num,
-   int drawcall_num, 
+   int drawcall_num,
    const char* output_dir)
 {
-   tgsi_dump_to_file(tokens, 0, NULL);
-
    struct dump_ctx ctx;
    memset(&ctx, 0, sizeof(ctx));
    init_dump_ctx(&ctx, 0);
@@ -1963,13 +1972,24 @@ generate_tgsi_ptx_code(
    //FILE* mid_inst_stream = open_memstream(&mid_inst_str, &mid_inst_size);
 
    char* file_name;
+   char* file_name_tgsi;
+   FILE* tgsiFile;
    if(shader_type == GL_FRAGMENT_SHADER){
      asprintf(&file_name, "%s/gpgpusimShaders/fragment_shader%d_%d.ptx", output_dir, frame_num, drawcall_num);
+     asprintf(&file_name_tgsi, "%s/gpgpusimShaders/fragment_shader%d_%d.tgsi", output_dir, frame_num, drawcall_num);
+     tgsiFile = fopen(file_name_tgsi, "w+");
+     tgsi_dump_to_file(tokens, 0, tgsiFile);
    } else if(shader_type == GL_VERTEX_SHADER) {
      asprintf(&file_name, "%s/gpgpusimShaders/vertex_shader%d_%d.ptx", output_dir, frame_num, drawcall_num);
+     asprintf(&file_name_tgsi, "%s/gpgpusimShaders/vertex_shader%d_%d.tgsi", output_dir, frame_num, drawcall_num);
+     tgsiFile = fopen(file_name_tgsi, "w+");
+     tgsi_dump_to_file(tokens, 0, tgsiFile);
    } else {
      printf("Unsupported shader type %d\n", shader_type);
    }
+
+   fclose(tgsiFile);
+   free((void*) file_name_tgsi);
 
    FILE* mid_inst_stream = fopen(file_name, "w");
    struct tgsi_parse_context parse;
