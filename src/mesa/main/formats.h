@@ -738,7 +738,7 @@ _mesa_format_image_size64(mesa_format format, GLsizei width,
 extern GLint
 _mesa_format_row_stride(mesa_format format, GLsizei width);
 
-extern void
+extern __attribute__ ((visibility ("default"))) void
 _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
                                GLenum *datatype, GLuint *comps);
 
