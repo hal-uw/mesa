@@ -650,7 +650,7 @@ openbsd* | darwin* )
     LD_NO_UNDEFINED="" ;;
 *)
     if test "x$enable_sanitize" = xno; then
-        LD_NO_UNDEFINED="-Wl,--no-undefined"
+        LD_NO_UNDEFINED="" #"-Wl,--no-undefined"
     else
         LD_NO_UNDEFINED=""
     fi
