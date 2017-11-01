@@ -966,25 +966,25 @@ const char *tgsi_texture_names_ptx[TGSI_TEXTURE_COUNT] =
 
 const int tgsi_texture_names_coords[TGSI_TEXTURE_COUNT] =
 {
-   0, //"BUFFER",
-   0, //"1D",
+   -1, //"BUFFER",
+   -1, //"1D",
    2, //"2d",
-   0, //"3D",
-   0, //"CUBE",
-   0, //"RECT",
-   0, //"SHADOW1D",
-   0, //"SHADOW2D",
-   0, //"SHADOWRECT",
-   0, //"1D_ARRAY",
-   0, //"2D_ARRAY",
-   0, //"SHADOW1D_ARRAY",
-   0, //"SHADOW2D_ARRAY",
-   0, //"SHADOWCUBE",
-   0, //"2D_MSAA",
-   0, //"2D_ARRAY_MSAA",
-   0, //"CUBEARRAY",
-   0, //"SHADOWCUBEARRAY",
-   0, //"UNKNOWN",
+   -1, //"3D",
+   -1, //"CUBE",
+   -1, //"RECT",
+   -1, //"SHADOW1D",
+   -1, //"SHADOW2D",
+   -1, //"SHADOWRECT",
+   -1, //"1D_ARRAY",
+   -1, //"2D_ARRAY",
+   -1, //"SHADOW1D_ARRAY",
+   -1, //"SHADOW2D_ARRAY",
+   -1, //"SHADOWCUBE",
+   -1, //"2D_MSAA",
+   -1, //"2D_ARRAY_MSAA",
+   -1, //"CUBEARRAY",
+   -1, //"SHADOWCUBEARRAY",
+   -1, //"UNKNOWN",
 };
 
 
@@ -1220,7 +1220,11 @@ get_register_dst_name(
    }
 
    if(special_reg){
-     asprintf(&dstRegNameFull, "%s%s%s.%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
+     if(dr){
+       asprintf(&dstRegNameFull, "%s%s%s.%s", dr->reg_value, dstRegName[1], dstRegName[2], dst_swizzle);
+     } else {
+       asprintf(&dstRegNameFull, "%s%s%s.%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
+     }
    } else {
      asprintf(&dstRegNameFull, "%s%s%s%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
    }
@@ -1339,7 +1343,8 @@ get_register_src_name(
 
 
    bool special_reg = false;
-   if(!strcmp(srcRegName[0], "IN")){
+   if(!strcmp(srcRegName[0], "IN")
+      || !strcmp(srcRegName[0],"CONST")){
      special_reg = true;
    }
 
@@ -1426,7 +1431,7 @@ gen_ptx_instruction(
      fprintf(inst_stream, "%s", ptx_opcodes[opcode].name);
      if(strlen(textureType) > 0)
        fprintf(inst_stream, ".%s", textureType);
-     fprintf(inst_stream, ".v%d.f32.u32 ", dstCount);
+     fprintf(inst_stream, ".v%d.f32.f32 ", dstCount);
 
      writeMask = dst->Register.WriteMask;
      int maskBit = -1;
@@ -1546,6 +1551,12 @@ gen_ptx_instruction(
         fprintf(inst_stream, ";\n");
 
       }//end while
+
+      char* dstRegName = (char*)get_register_dst_name( dst, 0);
+      //if writing to color then add stp instructoin afterwards
+      if(strcmp(dstRegName, "COLOR0.x") == 0) {
+        fprintf(inst_stream, "stp.global.u32;\n");
+      }
 
       //first_reg = FALSE;
    }//end for
@@ -1949,8 +1960,16 @@ static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int 
   }
 }
 
-static void print_ptx_tail(FILE* inst_stream){
-  fprintf(inst_stream, "\n}");
+static void print_ptx_tail(FILE* inst_stream, int shader_type){
+  if(shader_type == GL_FRAGMENT_SHADER) {
+    //fprintf(inst_stream, "stp;\n");
+    fprintf(inst_stream, "\n}");
+  } else if(shader_type == GL_VERTEX_SHADER) {
+    fprintf(inst_stream, "\n}");
+  } else {
+    printf("TGSI to PTX: unsupported shader type %d\n", shader_type);
+    abort();
+  }
 }
 
 
@@ -2043,7 +2062,7 @@ generate_tgsi_ptx_code(
    /*tgsi_parse_free( &parse );
    return TRUE;*/
 
-   print_ptx_tail(mid_inst_stream);
+   print_ptx_tail(mid_inst_stream, shader_type);
 
    fclose(mid_inst_stream);
 

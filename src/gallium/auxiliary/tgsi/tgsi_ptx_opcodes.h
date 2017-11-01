@@ -93,7 +93,8 @@ OPCODE(1, 2, COMP, OR, 0, "", 0)
 OPCODE(1, 2, COMP, MOD, 0, "", 0)
 OPCODE(1, 2, COMP, XOR, 0, "", 0)
 OPCODE_GAP(93) /* removed */
-OPCODE(1, 2, OTHR, TXF,  0, "", /*.is_tex =*/ 1)
+//OPCODE(1, 2, OTHR, txf,  1, , /*.is_tex =*/ 1)
+OPCODE(1, 2, OTHR, tex,  1, , /*.is_tex =*/ 1) //FIXME
 OPCODE(1, 2, OTHR, TXQ,  0, "", /*.is_tex =*/ 1)
 OPCODE(0, 0, NONE, CONT, 0, "", 0)
 OPCODE(0, 1, NONE, EMIT, 0, "", 0)
@@ -118,7 +119,7 @@ OPCODE_GAP(115) /* removed */
 OPCODE(0, 1, NONE, KILL_IF, 0, "", 0)
 OPCODE(0, 0, NONE, exit, 1, , 0)
 OPCODE(1, 3, COMP, DFMA, 0, "", 0)
-OPCODE(1, 1, COMP, F2I, 0, "", 0)
+OPCODE(1, 1, COMP, cvt, 1, .rz.s32.f32, 0)
 OPCODE(1, 2, COMP, IDIV, 0, "", 0)
 OPCODE(1, 2, COMP, IMAX, 0, "", 0)
 OPCODE(1, 2, COMP, IMIN, 0, "", 0)
