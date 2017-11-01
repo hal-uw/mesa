@@ -46,6 +46,7 @@
 #define DEBUG_VERTS 0
 #define DEBUG_FRAGS 0
 
+extern void gpgpusimAddPrimitive();
 
 /**
  * Triangle edge info
@@ -821,7 +822,9 @@ sp_setup_tri(struct setup_context *setup,
 
    if (setup->softpipe->no_rast || setup->softpipe->rasterizer->rasterizer_discard)
       return;
-   
+
+   gpgpusimAddPrimitive();
+
    det = calc_det(v0, v1, v2);
    /*
    debug_printf("%s\n", __FUNCTION__ );
@@ -1107,6 +1110,8 @@ sp_setup_line(struct setup_context *setup,
    if (setup->softpipe->no_rast || setup->softpipe->rasterizer->rasterizer_discard)
       return;
 
+   gpgpusimAddPrimitive();
+
    if (dx == 0 && dy == 0)
       return;
 
@@ -1253,6 +1258,8 @@ sp_setup_point(struct setup_context *setup,
 
    if (setup->softpipe->no_rast || setup->softpipe->rasterizer->rasterizer_discard)
       return;
+
+   gpgpusimAddPrimitive();
 
    assert(setup->softpipe->reduced_prim == PIPE_PRIM_POINTS);
 
