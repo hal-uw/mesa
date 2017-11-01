@@ -573,17 +573,24 @@ compute_lambda_vert(const struct sp_sampler_view *sview,
  */
 
 
-
+extern void gpgpusimAddTexelFetch(int x, int y, int level);
 
 static inline const float *
 get_texel_2d_no_border(const struct sp_sampler_view *sp_sview,
                        union tex_tile_address addr, int x, int y)
 {
    const struct softpipe_tex_cached_tile *tile;
+
+   /*if(addr.bits.level != 0)
+     printf("fetching texture location (%d, %d, %d)\n", x, y, addr.bits.level);*/
+
+   gpgpusimAddTexelFetch(x, y, addr.bits.level);
+
    addr.bits.x = x / TEX_TILE_SIZE;
    addr.bits.y = y / TEX_TILE_SIZE;
    y %= TEX_TILE_SIZE;
    x %= TEX_TILE_SIZE;
+
 
    tile = sp_get_cached_tile_tex(sp_sview->cache, addr);
 
@@ -767,6 +774,11 @@ get_texel_quad_2d_no_border_single_tile(const struct sp_sampler_view *sp_sview,
 {
     const struct softpipe_tex_cached_tile *tile;
 
+   /*if(addr.bits.level != 0)
+     printf("fetching texture location (%d, %d, %d)\n", x, y, addr.bits.level);*/
+
+   gpgpusimAddTexelFetch(x, y, addr.bits.level);
+
    addr.bits.x = x / TEX_TILE_SIZE;
    addr.bits.y = y / TEX_TILE_SIZE;
    y %= TEX_TILE_SIZE;
@@ -804,6 +816,12 @@ get_texel_3d_no_border(const struct sp_sampler_view *sp_sview,
                        union tex_tile_address addr, int x, int y, int z)
 {
    const struct softpipe_tex_cached_tile *tile;
+
+
+   /*if(addr.bits.level != 0)
+     printf("fetching texture location (%d, %d, %d)\n", x, y, addr.bits.level);*/
+
+   gpgpusimAddTexelFetch(x, y, addr.bits.level);
 
    addr.bits.x = x / TEX_TILE_SIZE;
    addr.bits.y = y / TEX_TILE_SIZE;
