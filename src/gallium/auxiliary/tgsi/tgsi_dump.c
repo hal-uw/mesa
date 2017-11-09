@@ -1396,7 +1396,7 @@ gen_ptx_instruction(
    assert(inst->Instruction.NumDstRegs == ptx_opcodes[opcode].num_dst);
 
    assert(ptx_opcodes[opcode].num_dst <= 1);
-   assert(ptx_opcodes[opcode].num_src <= 2);
+   assert(ptx_opcodes[opcode].num_src <= 3);
 
    if (inst->Instruction.Texture) {
      char* textureType;
@@ -1440,7 +1440,12 @@ gen_ptx_instruction(
        maskBit++;
        bool enabled = (1 & writeMask) != 0;
        writeMask >>= 1;
-       if(!enabled) continue;
+       if(!enabled){
+         fprintf(inst_stream, "dummy_%d ", maskBit);
+         if(writeMask)
+           fprintf(inst_stream, ", ");
+         continue;
+       }
 
       // const char* dst_swizzle = tgsi_swizzle_names[maskBit];
        char* dstRegName = (char*)get_register_dst_name( dst, maskBit);
@@ -1495,17 +1500,38 @@ gen_ptx_instruction(
    char srcRegNames[5][100];  //5 max num of src registers
    char* ptxInst;
    char* satStr = "";
+   char* inst_name = ptx_opcodes[opcode].name;
 
    if (inst->Instruction.Saturate) {
       //TXT( ".sat" );
-      satStr = ".sat";
+      if(ptx_opcodes[opcode].name == "mov"){
+        inst_name = "cvt.sat.f32";
+      } else {
+        satStr = ".sat";
+      }
    }
-   asprintf(&ptxInst, "%s%s%s", ptx_opcodes[opcode].name, satStr, ptx_opcodes[opcode].ptx_type);
+   asprintf(&ptxInst, "%s%s%s", inst_name, satStr, ptx_opcodes[opcode].ptx_type);
+
+   bool dpOp = false;
+   if(ptx_opcodes[opcode].name == "DP2"){
+     dpOp = true;
+   }
 
    for (dst_i = 0; dst_i < inst->Instruction.NumDstRegs; dst_i++) {
       const struct tgsi_full_dst_register *dst = &inst->Dst[dst_i];
 
       uint writeMask = dst->Register.WriteMask;
+      uint dpBit = -1;
+
+      if(dpOp){
+        while(writeMask) {
+          dpBit++;
+          if(1 & writeMask)
+            break;
+          writeMask >>= 1;
+        }
+        writeMask = 0xF;
+      }
 
       int maskBit = -1;
 
@@ -1542,15 +1568,57 @@ gen_ptx_instruction(
         }//end for srcs
 
         //const char* dst_swizzle = tgsi_swizzle_names[maskBit];
-
-        char* dstRegName = (char*)get_register_dst_name( dst, maskBit);
+        char* dstRegName;
+        //char dpReg[100];
+        if(dpOp){
+          /*strcpy(dpReg, "dpReg");
+          strcat(dpReg, tgsi_swizzle_names[maskBit]);
+          fprintf(inst_stream, ".reg .f32 %s;\n", dpReg);
+          dstRegName = dpReg;*/
+          free((void*) ptxInst);
+          asprintf(&ptxInst, "%s", "mad.f32");
+          dstRegName = (char*)get_register_dst_name( dst, dpBit);
+        } else {
+          dstRegName = (char*)get_register_dst_name( dst, maskBit);
+        }
         fprintf(inst_stream, "%s %s", ptxInst, dstRegName);
+
         for (src_i = 0; src_i < inst->Instruction.NumSrcRegs; src_i++) {
           fprintf(inst_stream, ", %s", srcRegNames[src_i]);
+        }
+
+        if(dpOp){
+          //add self
+          if(maskBit == 0){
+            fprintf(inst_stream, ", 0f00000000");
+          } else {
+            fprintf(inst_stream, ", %s", dstRegName);
+          }
         }
         fprintf(inst_stream, ";\n");
 
       }//end while
+
+      /*maskBit = -1;
+      if(dpOp){
+        writeMask = dst->Register.WriteMask;
+        while(writeMask) {
+          maskBit++;
+          if((1 & writeMask))
+            break;
+        }
+        for(int i=0; i<4; i++){
+          if(i==0){
+            fprintf(inst_stream, "mov.f32 %s, %s%s;\n",
+                    (char*) get_register_dst_name(dst, maskBit),
+                    "dpReg", tgsi_swizzle_names[i]);
+          } else {
+            fprintf(inst_stream, "add.f32 %s, %s%s;\n",
+                    (char*) get_register_dst_name(dst, maskBit),
+                    "dpReg", tgsi_swizzle_names[i]);
+          }
+        }
+      }*/
 
       char* dstRegName = (char*)get_register_dst_name( dst, 0);
       //if writing to color then add stp instructoin afterwards
@@ -1890,7 +1958,7 @@ gen_ptx_immediate(
          union di d;
          d.ui = imm->u[i].Uint | (uint64_t)imm->u[i+1].Uint << 32;
          //DBL( d.d );
-         asprintf(&sd->reg_value, "0f%lx", d.ui);
+         asprintf(&sd->reg_value, "0f%08lx", d.ui);
          //printf("replacing %s with %s\n", sd->reg_key, sd->reg_value);
          i++;
          break;
@@ -1908,7 +1976,7 @@ gen_ptx_immediate(
       case TGSI_IMM_FLOAT32:{
          union di d;
          d.ui = imm->u[i].Uint;
-         asprintf(&sd->reg_value, "0f%x", d.ui);
+         asprintf(&sd->reg_value, "0f%08x", d.ui);
          //printf("replacing %s with %s\n", sd->reg_key, sd->reg_value);
          break;
       }
@@ -1944,6 +2012,11 @@ static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int 
   int sampler;
   for(sampler = 0; sampler < PIPE_MAX_SHADER_SAMPLER_VIEWS; sampler++){
     fprintf(inst_stream, ".reg .f32 TGSI_SAMP_%d; //dummy sampler def\n", sampler);
+  }
+
+  int dummy;
+  for(dummy = 0; dummy < 4; dummy++){
+    fprintf(inst_stream, ".reg .f32 dummy_%d; //dummy register\n", dummy);
   }
 
   if(shader_type == GL_FRAGMENT_SHADER) {
