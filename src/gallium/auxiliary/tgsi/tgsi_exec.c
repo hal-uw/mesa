@@ -2318,7 +2318,7 @@ void __attribute__ ((visibility ("default"))) mesaFetchTxf(struct tgsi_exec_mach
 }
 
 void __attribute__ ((visibility ("default"))) mesaFetchTexture(struct tgsi_exec_machine *mach,
-         uint modifier, uint unit, int dim, float* coord,
+         uint modifier, uint unit, uint sampler, int dim, float* coord,
          int num_coord, float* dst, int num_dst, int quadIdx)
 {
    const union tgsi_exec_channel *args[5], *proj = NULL;
@@ -2341,7 +2341,6 @@ void __attribute__ ((visibility ("default"))) mesaFetchTexture(struct tgsi_exec_
    }
 
    //unit = fetch_sampler_unit(mach, inst, sampler);
-
    //fetch_texel_offsets(mach, inst, offsets);
    //assume all zeros
    offsets[0] = offsets[1] = offsets[2] = 0;
@@ -2358,19 +2357,27 @@ void __attribute__ ((visibility ("default"))) mesaFetchTexture(struct tgsi_exec_
    if (modifier != TEX_MODIFIER_NONE) {
       const int last = ARRAY_SIZE(args) - 1;
 
-      /*
       //fetch modifier from src0.w or src1.x 
+      assert(sampler == 1);
       if (sampler == 1) {
-         assert(dim <= TGSI_CHAN_W && shadow_ref != TGSI_CHAN_W);
-         //FETCH(&r[last], 0, TGSI_CHAN_W);
-         fetch_source(mach, &r[last], &inst->Src[0], TGSI_CHAN_W, TGSI_EXEC_DATA_FLOAT);
-      }
-      else {
+         //assert(dim <= TGSI_CHAN_W && shadow_ref != TGSI_CHAN_W);
+         // //FETCH(&r[last], 0, TGSI_CHAN_W);
+         //fetch_source(mach, &r[last], &inst->Src[0], TGSI_CHAN_W, TGSI_EXEC_DATA_FLOAT);
+
+        for(i=0; i < TGSI_QUAD_SIZE; i++){
+          if(i == quadIdx)
+            ic[last].f[i] = coord[j];
+          else ic[last].f[i] = 0.0;
+        }
+      } else {
+        assert(0 && "not supporting the case when sampler != 1");
+         /*
          assert(shadow_ref != 4);
          //FETCH(&r[last], 1, TGSI_CHAN_X);
          fetch_source(mach, &r[last], &inst->Src[1], TGSI_CHAN_X, TGSI_EXEC_DATA_FLOAT);
+         */
       }
-
+      /*
       if (modifier != TEX_MODIFIER_PROJECTED) {
          args[last] = &r[last];
       }
@@ -2379,9 +2386,15 @@ void __attribute__ ((visibility ("default"))) mesaFetchTexture(struct tgsi_exec_
          args[last] = &ZeroVec;
       }*/
 
+      args[last] = &ic[last];
       /* point unused arguments to zero vector */
-      for (i = dim; i < last; i++)
-         args[i] = &ZeroVec;
+      for (i = dim; i < last; i++){
+        for(j=0; j < TGSI_QUAD_SIZE; j++){
+          ic[i].f[j] = 0.0;
+        }
+        args[i] = &ic[i];
+         //args[i] = &ZeroVec;
+      }
 
       if (modifier == TEX_MODIFIER_EXPLICIT_LOD)
          control = TGSI_SAMPLER_LOD_EXPLICIT;
@@ -2430,18 +2443,6 @@ void __attribute__ ((visibility ("default"))) mesaFetchTexture(struct tgsi_exec_
    for(i=0; i < num_dst; i++){
      dst[i] = r[i].f[quadIdx];
    }
-
-
-   /*for (int chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-     printf("fragment (%f,%f) texel[%d]=%f\n", (*args[0]).f[quadIdx], (*args[1]).f[quadIdx], //coord[0], coord[1],
-            chan, r[chan].f[quadIdx]);
-   }*/
-
-   /*for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-      if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
-         store_dest(mach, &r[chan], &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
-      }
-   }*/
 }
 
 /*

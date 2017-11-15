@@ -63,30 +63,6 @@ extern void finalize_softpipe_draw_vbo(struct softpipe_context *sp, const void* 
    struct softpipe_context *softpipe = softpipe_context(sp);
    struct draw_context *draw = sp->draw;
    unsigned i;
-   /* unmap vertex/index buffers - will cause draw module to flush */
-   for (i = 0; i < sp->num_vertex_buffers; i++) {
-     draw_set_mapped_vertex_buffer(draw, i, NULL, 0);
-   }
-   if (mapped_indices) {
-     draw_set_indexes(draw, NULL, 0, 0);
-   }
-
-   draw_set_mapped_so_targets(draw, 0, NULL);
-
-   if (softpipe_screen(sp->pipe.screen)->use_llvm) {
-     softpipe_cleanup_vertex_sampling(sp);
-     softpipe_cleanup_geometry_sampling(sp);
-   }
-
-   /*
-    * TODO: Flush only when a user vertex/index buffer is present
-    * (or even better, modify draw module to do this
-    * internally when this condition is seen?)
-    */
-   draw_flush(draw);
-
-   /* Note: leave drawing surfaces mapped */
-   sp->dirty_render_cache = TRUE;
 
    gpgpusimFinalizeCurrentDraw();
 }
@@ -126,14 +102,6 @@ softpipe_draw_vbo(struct pipe_context *pipe,
       softpipe_update_derived(sp, sp->reduced_api_prim);
    }
 
-   if(gpgpusimSimulationActive()){
-     int frame_num, drawcall_num;
-     const char* output_dir;
-     gpgpusimGetFrameDrawcallNum(&frame_num, &drawcall_num);
-     gpgpusimGetOutputDir(&output_dir);
-     char* frag_ptx_code = generate_tgsi_ptx_code(sp->fs_machine->Tokens, GL_FRAGMENT_SHADER, frame_num, drawcall_num, output_dir);
-     gpgpusimInitializeCurrentDraw(sp->fs_machine, sp, mapped_indices);
-   }
 
 
    /* Map vertex buffers */
@@ -196,8 +164,42 @@ softpipe_draw_vbo(struct pipe_context *pipe,
    draw_collect_pipeline_statistics(draw,
                                     sp->active_statistics_queries > 0);
 
+   if(gpgpusimSimulationActive()){
+     int frame_num, drawcall_num;
+     const char* output_dir;
+     gpgpusimGetFrameDrawcallNum(&frame_num, &drawcall_num);
+     gpgpusimGetOutputDir(&output_dir);
+     char* frag_ptx_code = generate_tgsi_ptx_code(sp->fs_machine->Tokens, GL_FRAGMENT_SHADER, frame_num, drawcall_num, output_dir);
+     gpgpusimInitializeCurrentDraw(sp->fs_machine, sp, mapped_indices); // softpipe->mapped_constants[PIPE);
+   }
+
    /* draw! */
    draw_vbo(draw, info);
+
+   /* unmap vertex/index buffers - will cause draw module to flush */
+   for (i = 0; i < sp->num_vertex_buffers; i++) {
+     draw_set_mapped_vertex_buffer(draw, i, NULL, 0);
+   }
+   if (mapped_indices) {
+     draw_set_indexes(draw, NULL, 0, 0);
+   }
+
+   draw_set_mapped_so_targets(draw, 0, NULL);
+
+   if (softpipe_screen(sp->pipe.screen)->use_llvm) {
+     softpipe_cleanup_vertex_sampling(sp);
+     softpipe_cleanup_geometry_sampling(sp);
+   }
+
+   /*
+    * TODO: Flush only when a user vertex/index buffer is present
+    * (or even better, modify draw module to do this
+    * internally when this condition is seen?)
+    */
+   draw_flush(draw);
+
+   /* Note: leave drawing surfaces mapped */
+   sp->dirty_render_cache = TRUE;
 
    if(gpgpusimSimulationActive()) {
      gpgpusimDoFragmentShading();

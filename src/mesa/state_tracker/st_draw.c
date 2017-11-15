@@ -64,7 +64,10 @@
 #include "util/u_upload_mgr.h"
 #include "draw/draw_context.h"
 #include "cso_cache/cso_context.h"
-
+#include "tgsi/tgsi_dump.h"
+#include "tgsi/tgsi_exec.h"
+#include "gallium/drivers/softpipe/sp_context.h"
+#include "gallium/drivers/softpipe/sp_state.h"
 
 /**
  * Set the restart index.
@@ -105,6 +108,7 @@ translate_prim(const struct gl_context *ctx, unsigned prim)
    return prim;
 }
 
+
 static inline void
 prepare_draw(struct st_context *st, struct gl_context *ctx)
 {
@@ -121,6 +125,7 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
        st->gfx_shaders_may_be_dirty) {
       st_validate_state(st, ST_PIPELINE_RENDER);
    }
+
 }
 
 /**
@@ -128,6 +133,10 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
  * we have something to render.
  * Basically, translate the information into the format expected by gallium.
  */
+
+extern void gpgpusimSetContext(struct gl_context* ctx);
+extern bool gpgpusimIsBusy();
+
 static void
 st_draw_vbo(struct gl_context *ctx,
             const struct _mesa_prim *prims,
@@ -145,7 +154,14 @@ st_draw_vbo(struct gl_context *ctx,
    unsigned i;
    unsigned start = 0;
 
+   //if gpgpusim is working on another draw call wait till it's done
+   while(gpgpusimIsBusy()){
+     usleep(1);
+   }
+
    prepare_draw(st, ctx);
+
+   gpgpusimSetContext(ctx);
 
    if (st->vertex_array_out_of_memory)
       return;

@@ -2067,13 +2067,13 @@ generate_tgsi_ptx_code(
    char* file_name_tgsi;
    FILE* tgsiFile;
    if(shader_type == GL_FRAGMENT_SHADER){
-     asprintf(&file_name, "%s/gpgpusimShaders/fragment_shader%d_%d.ptx", output_dir, frame_num, drawcall_num);
-     asprintf(&file_name_tgsi, "%s/gpgpusimShaders/fragment_shader%d_%d.tgsi", output_dir, frame_num, drawcall_num);
+     asprintf(&file_name, "%s/fragment_shader%d_%d.ptx", output_dir, frame_num, drawcall_num);
+     asprintf(&file_name_tgsi, "%s/fragment_shader%d_%d.tgsi", output_dir, frame_num, drawcall_num);
      tgsiFile = fopen(file_name_tgsi, "w+");
      tgsi_dump_to_file(tokens, 0, tgsiFile);
    } else if(shader_type == GL_VERTEX_SHADER) {
-     asprintf(&file_name, "%s/gpgpusimShaders/vertex_shader%d_%d.ptx", output_dir, frame_num, drawcall_num);
-     asprintf(&file_name_tgsi, "%s/gpgpusimShaders/vertex_shader%d_%d.tgsi", output_dir, frame_num, drawcall_num);
+     asprintf(&file_name, "%s/vertex_shader%d_%d.ptx", output_dir, frame_num, drawcall_num);
+     asprintf(&file_name_tgsi, "%s/vertex_shader%d_%d.tgsi", output_dir, frame_num, drawcall_num);
      tgsiFile = fopen(file_name_tgsi, "w+");
      tgsi_dump_to_file(tokens, 0, tgsiFile);
    } else {
