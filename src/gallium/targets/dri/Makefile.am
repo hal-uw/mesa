@@ -125,12 +125,18 @@ all-local: $(dri_LTLIBRARIES)
 	for i in $(TARGET_DRIVERS); do                                  \
 		ln -f .libs/gallium_dri.so                              \
 			$${link_dir}/$${i}_dri.so;                      \
+		ln -sf $${i}_dri.so                                     \
+			$${link_dir}/lib$${i}_dri.so;                   \
+		cp    .libs/gallium_dri.so                              \
+			$${link_dir}/;                      \
 	done
 
 clean-local:
 	$(AM_V_GEN)link_dir=$(top_builddir)/$(LIB_DIR)/gallium;         \
 	$(AM_V_GEN)for i in $(TARGET_DRIVERS); do                       \
 		$(RM) $${link_dir}/$${i}_dri.so;                        \
+		$(RM) $${link_dir}/lib$${i}_dri.so;                     \
+		$(RM) $${link_dir}/gallium_dri.so;                      \
 	done;
 endif
 
