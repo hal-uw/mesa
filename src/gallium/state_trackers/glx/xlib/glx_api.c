@@ -1441,9 +1441,11 @@ glXIsDirect( Display *dpy, GLXContext ctx )
 
 
 
+extern void gpgpusimEndOfFrame();
 PUBLIC void
 glXSwapBuffers( Display *dpy, GLXDrawable drawable )
 {
+   gpgpusimEndOfFrame();
    XMesaBuffer buffer = XMesaFindBuffer( dpy, drawable );
    static boolean firsttime = 1, no_rast = 0;
 
