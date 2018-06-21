@@ -252,6 +252,7 @@ st_renderbuffer_delete(struct gl_context *ctx, struct gl_renderbuffer *rb)
 static struct gl_renderbuffer *
 st_new_renderbuffer(struct gl_context *ctx, GLuint name)
 {
+   gpgpusimWait();
    struct st_renderbuffer *strb = ST_CALLOC_STRUCT(st_renderbuffer);
    if (strb) {
       assert(name != 0);
@@ -506,6 +507,7 @@ st_render_texture(struct gl_context *ctx,
                   struct gl_framebuffer *fb,
                   struct gl_renderbuffer_attachment *att)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct gl_renderbuffer *rb = att->Renderbuffer;
@@ -550,6 +552,7 @@ st_render_texture(struct gl_context *ctx,
 static void
 st_finish_render_texture(struct gl_context *ctx, struct gl_renderbuffer *rb)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct st_renderbuffer *strb = st_renderbuffer(rb);
 
@@ -635,6 +638,7 @@ st_validate_attachment(struct gl_context *ctx,
 static void
 st_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct pipe_screen *screen = st->pipe->screen;
    const struct gl_renderbuffer_attachment *depth =
@@ -718,6 +722,7 @@ st_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
 static void
 st_DrawBuffers(struct gl_context *ctx, GLsizei count, const GLenum *buffers)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct gl_framebuffer *fb = ctx->DrawBuffer;
 
@@ -745,6 +750,7 @@ st_DrawBuffers(struct gl_context *ctx, GLsizei count, const GLenum *buffers)
 static void
 st_ReadBuffer(struct gl_context *ctx, GLenum buffer)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct gl_framebuffer *fb = ctx->ReadBuffer;
 
@@ -766,12 +772,8 @@ st_ReadBuffer(struct gl_context *ctx, GLenum buffer)
 }
 
 
-
-/**
- * Called via ctx->Driver.MapRenderbuffer.
- */
 static void
-st_MapRenderbuffer(struct gl_context *ctx,
+st_MapRenderbuffer_base(struct gl_context *ctx,
                    struct gl_renderbuffer *rb,
                    GLuint x, GLuint y, GLuint w, GLuint h,
                    GLbitfield mode,
@@ -839,11 +841,24 @@ st_MapRenderbuffer(struct gl_context *ctx,
 }
 
 
+
 /**
- * Called via ctx->Driver.UnmapRenderbuffer.
+ * Called via ctx->Driver.MapRenderbuffer.
  */
 static void
-st_UnmapRenderbuffer(struct gl_context *ctx,
+st_MapRenderbuffer(struct gl_context *ctx,
+                   struct gl_renderbuffer *rb,
+                   GLuint x, GLuint y, GLuint w, GLuint h,
+                   GLbitfield mode,
+                   GLubyte **mapOut, GLint *rowStrideOut)
+{
+   gpgpusimWait();
+   st_MapRenderbuffer_base(ctx, rb, x, y, w, h, mode, mapOut, rowStrideOut);
+}
+
+
+static void
+st_UnmapRenderbuffer_base(struct gl_context *ctx,
                      struct gl_renderbuffer *rb)
 {
    struct st_context *st = st_context(ctx);
@@ -857,6 +872,18 @@ st_UnmapRenderbuffer(struct gl_context *ctx,
 
    pipe_transfer_unmap(pipe, strb->transfer);
    strb->transfer = NULL;
+}
+
+
+/**
+ * Called via ctx->Driver.UnmapRenderbuffer.
+ */
+static void
+st_UnmapRenderbuffer(struct gl_context *ctx,
+                     struct gl_renderbuffer *rb)
+{
+   gpgpusimWait();
+   st_UnmapRenderbuffer_base(ctx, rb);
 }
 
 
@@ -875,5 +902,7 @@ st_init_fbo_functions(struct dd_function_table *functions)
    functions->ReadBuffer = st_ReadBuffer;
 
    functions->MapRenderbuffer = st_MapRenderbuffer;
+   functions->MapRenderbuffer_base = st_MapRenderbuffer_base;
    functions->UnmapRenderbuffer = st_UnmapRenderbuffer;
+   functions->UnmapRenderbuffer_base = st_UnmapRenderbuffer_base;
 }

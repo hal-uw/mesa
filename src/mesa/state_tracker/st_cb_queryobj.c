@@ -50,6 +50,7 @@
 static struct gl_query_object *
 st_NewQueryObject(struct gl_context *ctx, GLuint id)
 {
+   gpgpusimWait();
    struct st_query_object *stq = ST_CALLOC_STRUCT(st_query_object);
    if (stq) {
       stq->base.Id = id;
@@ -80,6 +81,7 @@ free_queries(struct pipe_context *pipe, struct st_query_object *stq)
 static void
 st_DeleteQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_query_object *stq = st_query_object(q);
 
@@ -92,6 +94,7 @@ st_DeleteQuery(struct gl_context *ctx, struct gl_query_object *q)
 static void
 st_BeginQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct st_query_object *stq = st_query_object(q);
@@ -186,6 +189,7 @@ st_BeginQuery(struct gl_context *ctx, struct gl_query_object *q)
 static void
 st_EndQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_query_object *stq = st_query_object(q);
    bool ret = false;
@@ -293,6 +297,7 @@ get_query_result(struct pipe_context *pipe,
 static void
 st_WaitQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_query_object *stq = st_query_object(q);
 
@@ -312,6 +317,7 @@ st_WaitQuery(struct gl_context *ctx, struct gl_query_object *q)
 static void
 st_CheckQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_query_object *stq = st_query_object(q);
    assert(!q->Ready);   /* we should not get called if Ready is TRUE */
@@ -322,6 +328,7 @@ st_CheckQuery(struct gl_context *ctx, struct gl_query_object *q)
 static uint64_t
 st_GetTimestamp(struct gl_context *ctx)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct pipe_screen *screen = pipe->screen;
 
@@ -341,6 +348,7 @@ st_StoreQueryResult(struct gl_context *ctx, struct gl_query_object *q,
                     struct gl_buffer_object *buf, intptr_t offset,
                     GLenum pname, GLenum ptype)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_query_object *stq = st_query_object(q);
    struct st_buffer_object *stObj = st_buffer_object(buf);

@@ -135,7 +135,14 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
  */
 
 extern void gpgpusimSetContext(struct gl_context* ctx);
-extern bool gpgpusimIsBusy();
+
+//TODO: move function somewhere else
+void gpgpusimWait(){
+   //if gpgpusim is working on another draw call wait till it's done
+   while(gpgpusimIsBusy()){
+      usleep(1);
+   }
+}
 
 static void
 st_draw_vbo(struct gl_context *ctx,
@@ -154,10 +161,7 @@ st_draw_vbo(struct gl_context *ctx,
    unsigned i;
    unsigned start = 0;
 
-   //if gpgpusim is working on another draw call wait till it's done
-   while(gpgpusimIsBusy()){
-     usleep(1);
-   }
+   gpgpusimWait();
 
    prepare_draw(st, ctx);
 

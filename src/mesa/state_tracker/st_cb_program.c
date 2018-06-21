@@ -57,6 +57,7 @@ static struct gl_program *
 st_new_program(struct gl_context *ctx, GLenum target, GLuint id,
                bool is_arb_asm)
 {
+   gpgpusimWait();
    switch (target) {
    case GL_VERTEX_PROGRAM_ARB: {
       struct st_vertex_program *prog = rzalloc(NULL,
@@ -93,6 +94,7 @@ st_new_program(struct gl_context *ctx, GLenum target, GLuint id,
 static void
 st_delete_program(struct gl_context *ctx, struct gl_program *prog)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
 
    switch( prog->Target ) {
@@ -159,6 +161,7 @@ st_program_string_notify( struct gl_context *ctx,
                                            GLenum target,
                                            struct gl_program *prog )
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    gl_shader_stage stage = _mesa_program_enum_to_shader_stage(target);
 
@@ -259,6 +262,7 @@ st_program_string_notify( struct gl_context *ctx,
 static struct gl_program *
 st_new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg)
 {
+   gpgpusimWait();
    struct gl_program *prog = ctx->Driver.NewProgram(ctx, GL_FRAGMENT_PROGRAM_ARB,
          curProg->Id, true);
    struct st_fragment_program *stfp = (struct st_fragment_program *)prog;

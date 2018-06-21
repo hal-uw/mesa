@@ -33,6 +33,7 @@
 void
 st_get_program_binary_driver_sha1(struct gl_context *ctx, uint8_t *sha1)
 {
+   gpgpusimWait();
    disk_cache_compute_key(ctx->Cache, NULL, 0, sha1);
 }
 
@@ -59,6 +60,7 @@ write_tgsi_to_cache(struct blob *blob, const struct tgsi_token *tokens,
 void
 st_serialise_tgsi_program(struct gl_context *ctx, struct gl_program *prog)
 {
+   gpgpusimWait();
    struct blob blob;
    blob_init(&blob);
 
@@ -156,6 +158,7 @@ st_deserialise_tgsi_program(struct gl_context *ctx,
                             struct gl_shader_program *shProg,
                             struct gl_program *prog)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    size_t size = prog->driver_cache_blob_size;
    uint8_t *buffer = (uint8_t *) prog->driver_cache_blob;

@@ -57,6 +57,7 @@
 static struct gl_buffer_object *
 st_bufferobj_alloc(struct gl_context *ctx, GLuint name)
 {
+   gpgpusimWait();
    struct st_buffer_object *st_obj = ST_CALLOC_STRUCT(st_buffer_object);
 
    if (!st_obj)
@@ -76,6 +77,7 @@ st_bufferobj_alloc(struct gl_context *ctx, GLuint name)
 static void
 st_bufferobj_free(struct gl_context *ctx, struct gl_buffer_object *obj)
 {
+   gpgpusimWait();
    struct st_buffer_object *st_obj = st_buffer_object(obj);
 
    assert(obj->RefCount == 0);
@@ -101,6 +103,7 @@ st_bufferobj_subdata(struct gl_context *ctx,
                      GLsizeiptrARB size,
                      const void * data, struct gl_buffer_object *obj)
 {
+   gpgpusimWait();
    struct st_buffer_object *st_obj = st_buffer_object(obj);
 
    /* we may be called from VBO code, so double-check params here */
@@ -145,6 +148,7 @@ st_bufferobj_get_subdata(struct gl_context *ctx,
                          GLsizeiptrARB size,
                          void * data, struct gl_buffer_object *obj)
 {
+   gpgpusimWait();
    struct st_buffer_object *st_obj = st_buffer_object(obj);
 
    /* we may be called from VBO code, so double-check params here */
@@ -386,6 +390,7 @@ st_bufferobj_data(struct gl_context *ctx,
                   GLbitfield storageFlags,
                   struct gl_buffer_object *obj)
 {
+   gpgpusimWait();
    return bufferobj_data(ctx, target, size, data, NULL, 0, usage, storageFlags, obj);
 }
 
@@ -398,6 +403,7 @@ st_bufferobj_data_mem(struct gl_context *ctx,
                       GLenum usage,
                       struct gl_buffer_object *bufObj)
 {
+   gpgpusimWait();
    return bufferobj_data(ctx, target, size, NULL, memObj, offset, usage, 0, bufObj);
 }
 
@@ -410,6 +416,7 @@ st_bufferobj_invalidate(struct gl_context *ctx,
                         GLintptr offset,
                         GLsizeiptr size)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct st_buffer_object *st_obj = st_buffer_object(obj);
@@ -482,6 +489,7 @@ st_bufferobj_map_range(struct gl_context *ctx,
                        struct gl_buffer_object *obj,
                        gl_map_buffer_index index)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_buffer_object *st_obj = st_buffer_object(obj);
 
@@ -518,6 +526,7 @@ st_bufferobj_flush_mapped_range(struct gl_context *ctx,
                                 struct gl_buffer_object *obj,
                                 gl_map_buffer_index index)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_buffer_object *st_obj = st_buffer_object(obj);
 
@@ -543,6 +552,7 @@ static GLboolean
 st_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
                    gl_map_buffer_index index)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_buffer_object *st_obj = st_buffer_object(obj);
 
@@ -567,6 +577,7 @@ st_copy_buffer_subdata(struct gl_context *ctx,
                        GLintptr readOffset, GLintptr writeOffset,
                        GLsizeiptr size)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_buffer_object *srcObj = st_buffer_object(src);
    struct st_buffer_object *dstObj = st_buffer_object(dst);
@@ -595,6 +606,7 @@ st_clear_buffer_subdata(struct gl_context *ctx,
                         GLsizeiptr clearValueSize,
                         struct gl_buffer_object *bufObj)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_buffer_object *buf = st_buffer_object(bufObj);
    static const char zeros[16] = {0};
@@ -618,6 +630,7 @@ st_bufferobj_page_commitment(struct gl_context *ctx,
                              GLintptr offset, GLsizeiptr size,
                              GLboolean commit)
 {
+   gpgpusimWait();
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_buffer_object *buf = st_buffer_object(bufferObj);
    struct pipe_box box;

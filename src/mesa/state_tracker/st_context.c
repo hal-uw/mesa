@@ -94,6 +94,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
 static void
 st_Enable(struct gl_context *ctx, GLenum cap, GLboolean state)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
 
    switch (cap) {
@@ -113,6 +114,7 @@ st_Enable(struct gl_context *ctx, GLenum cap, GLboolean state)
 static void
 st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out)
 {
+   gpgpusimWait();
    struct pipe_screen *screen = st_context(ctx)->pipe->screen;
    struct pipe_memory_info info;
 
@@ -182,13 +184,8 @@ st_invalidate_buffers(struct st_context *st)
                 ST_NEW_WINDOW_RECTANGLES;
 }
 
-
-/**
- * Called via ctx->Driver.UpdateState()
- */
 static void
-st_invalidate_state(struct gl_context *ctx)
-{
+st_invalidate_state_base(struct gl_context *ctx){
    GLbitfield new_state = ctx->NewState;
    struct st_context *st = st_context(ctx);
 
@@ -248,6 +245,17 @@ st_invalidate_state(struct gl_context *ctx)
          st->dirty |= ST_NEW_FS_STATE;
       }
    }
+}
+
+
+/**
+ * Called via ctx->Driver.UpdateState()
+ */
+static void
+st_invalidate_state(struct gl_context *ctx)
+{
+   gpgpusimWait();
+   st_invalidate_state_base(ctx);
 }
 
 
@@ -667,6 +675,7 @@ st_destroy_context(struct st_context *st)
 static void
 st_emit_string_marker(struct gl_context *ctx, const GLchar *string, GLsizei len)
 {
+   gpgpusimWait();
    struct st_context *st = ctx->st;
    st->pipe->emit_string_marker(st->pipe, string, len);
 }
@@ -676,6 +685,7 @@ static void
 st_set_background_context(struct gl_context *ctx,
                           struct util_queue_monitoring *queue_info)
 {
+   gpgpusimWait();
    struct st_context *st = ctx->st;
    struct st_manager *smapi =
       (struct st_manager *) st->iface.st_context_private;
@@ -688,6 +698,7 @@ st_set_background_context(struct gl_context *ctx,
 static void
 st_get_device_uuid(struct gl_context *ctx, char *uuid)
 {
+   gpgpusimWait();
    struct pipe_screen *screen = st_context(ctx)->pipe->screen;
 
    assert(GL_UUID_SIZE_EXT >= PIPE_UUID_SIZE);
@@ -699,6 +710,7 @@ st_get_device_uuid(struct gl_context *ctx, char *uuid)
 static void
 st_get_driver_uuid(struct gl_context *ctx, char *uuid)
 {
+   gpgpusimWait();
    struct pipe_screen *screen = st_context(ctx)->pipe->screen;
 
    assert(GL_UUID_SIZE_EXT >= PIPE_UUID_SIZE);
@@ -753,6 +765,7 @@ st_init_driver_functions(struct pipe_screen *screen,
 
    functions->Enable = st_Enable;
    functions->UpdateState = st_invalidate_state;
+   functions->UpdateState_base = st_invalidate_state_base;
    functions->QueryMemoryInfo = st_query_memory_info;
    functions->SetBackgroundContext = st_set_background_context;
    functions->GetDriverUuid = st_get_driver_uuid;

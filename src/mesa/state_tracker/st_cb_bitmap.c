@@ -607,6 +607,7 @@ st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
           GLsizei width, GLsizei height,
           const struct gl_pixelstore_attrib *unpack, const GLubyte *bitmap )
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct pipe_resource *pt;
 
@@ -660,6 +661,7 @@ st_DrawAtlasBitmaps(struct gl_context *ctx,
                     const struct gl_bitmap_atlas *atlas,
                     GLuint count, const GLubyte *ids)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct st_texture_object *stObj = st_texture_object(atlas->texObj);

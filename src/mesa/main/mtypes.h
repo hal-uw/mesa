@@ -54,6 +54,9 @@
 extern "C" {
 #endif
 
+//used to block API calls when gpgpusim is busy
+extern bool gpgpusimIsBusy();
+void gpgpusimWait(void);
 
 /** Set a single bit */
 #define BITFIELD_BIT(b)      ((GLbitfield)1 << (b))

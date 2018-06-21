@@ -1129,6 +1129,7 @@ st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
               GLenum format, GLenum type,
               const struct gl_pixelstore_attrib *unpack, const void *pixels)
 {
+   gpgpusimWait();
    void *driver_vp, *driver_fp;
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
@@ -1494,6 +1495,7 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
               GLsizei width, GLsizei height,
               GLint dstx, GLint dsty, GLenum type)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct pipe_screen *screen = pipe->screen;

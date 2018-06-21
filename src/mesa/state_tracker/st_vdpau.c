@@ -184,6 +184,7 @@ st_vdpau_map_surface(struct gl_context *ctx, GLenum target, GLenum access,
                      struct gl_texture_image *texImage,
                      const void *vdpSurface, GLuint index)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct st_texture_object *stObj = st_texture_object(texObj);
    struct st_texture_image *stImage = st_texture_image(texImage);
@@ -249,6 +250,7 @@ st_vdpau_unmap_surface(struct gl_context *ctx, GLenum target, GLenum access,
                        struct gl_texture_image *texImage,
                        const void *vdpSurface, GLuint index)
 {
+   gpgpusimWait();
    struct st_context *st = st_context(ctx);
    struct st_texture_object *stObj = st_texture_object(texObj);
    struct st_texture_image *stImage = st_texture_image(texImage);

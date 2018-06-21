@@ -6982,6 +6982,7 @@ extern "C" {
 GLboolean
 st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
 {
+   gpgpusimWait();
    /* Return early if we are loading the shader from on-disk cache */
    if (st_load_tgsi_from_disk_cache(ctx, prog)) {
       return GL_TRUE;
