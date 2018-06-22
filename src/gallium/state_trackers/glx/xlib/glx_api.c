@@ -1086,6 +1086,7 @@ choose_visual( Display *dpy, int screen, const int *list, GLboolean fbConfig )
 PUBLIC XVisualInfo *
 glXChooseVisual( Display *dpy, int screen, int *list )
 {
+   gpgpusimWait();
    XMesaVisual xmvis;
 
    /* register ourselves as an extension on this display */
@@ -1147,6 +1148,7 @@ PUBLIC GLXContext
 glXCreateContext( Display *dpy, XVisualInfo *visinfo,
                   GLXContext shareCtx, Bool direct )
 {
+   gpgpusimWait();
    XMesaVisual xmvis;
 
    xmvis = find_glx_visual( dpy, visinfo );
@@ -1179,6 +1181,7 @@ PUBLIC Bool
 glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
                        GLXDrawable read, GLXContext ctx )
 {
+   gpgpusimWait();
    GLXContext glxCtx = ctx;
    static boolean firsttime = 1, no_rast = 0;
 
@@ -1274,6 +1277,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
 PUBLIC Bool
 glXMakeCurrent( Display *dpy, GLXDrawable drawable, GLXContext ctx )
 {
+   gpgpusimWait();
    return glXMakeContextCurrent( dpy, drawable, drawable, ctx );
 }
 
@@ -1281,6 +1285,7 @@ glXMakeCurrent( Display *dpy, GLXDrawable drawable, GLXContext ctx )
 PUBLIC GLXContext
 glXGetCurrentContext(void)
 {
+   gpgpusimWait();
    return GetCurrentContext();
 }
 
@@ -1288,6 +1293,7 @@ glXGetCurrentContext(void)
 PUBLIC Display *
 glXGetCurrentDisplay(void)
 {
+   gpgpusimWait();
    GLXContext glxCtx = glXGetCurrentContext();
 
    return glxCtx ? glxCtx->currentDpy : NULL;
@@ -1297,6 +1303,7 @@ glXGetCurrentDisplay(void)
 PUBLIC Display *
 glXGetCurrentDisplayEXT(void)
 {
+   gpgpusimWait();
    return glXGetCurrentDisplay();
 }
 
@@ -1304,6 +1311,7 @@ glXGetCurrentDisplayEXT(void)
 PUBLIC GLXDrawable
 glXGetCurrentDrawable(void)
 {
+   gpgpusimWait();
    GLXContext gc = glXGetCurrentContext();
    return gc ? gc->currentDrawable : 0;
 }
@@ -1312,6 +1320,7 @@ glXGetCurrentDrawable(void)
 PUBLIC GLXDrawable
 glXGetCurrentReadDrawable(void)
 {
+   gpgpusimWait();
    GLXContext gc = glXGetCurrentContext();
    return gc ? gc->currentReadable : 0;
 }
@@ -1320,6 +1329,7 @@ glXGetCurrentReadDrawable(void)
 PUBLIC GLXDrawable
 glXGetCurrentReadDrawableSGI(void)
 {
+   gpgpusimWait();
    return glXGetCurrentReadDrawable();
 }
 
@@ -1327,6 +1337,7 @@ glXGetCurrentReadDrawableSGI(void)
 PUBLIC GLXPixmap
 glXCreateGLXPixmap( Display *dpy, XVisualInfo *visinfo, Pixmap pixmap )
 {
+   gpgpusimWait();
    XMesaVisual v;
    XMesaBuffer b;
 
@@ -1353,6 +1364,7 @@ PUBLIC GLXPixmap
 glXCreateGLXPixmapMESA( Display *dpy, XVisualInfo *visinfo,
                         Pixmap pixmap, Colormap cmap )
 {
+   gpgpusimWait();
    XMesaVisual v;
    XMesaBuffer b;
 
@@ -1376,6 +1388,7 @@ glXCreateGLXPixmapMESA( Display *dpy, XVisualInfo *visinfo,
 PUBLIC void
 glXDestroyGLXPixmap( Display *dpy, GLXPixmap pixmap )
 {
+   gpgpusimWait();
    XMesaBuffer b = XMesaFindBuffer(dpy, pixmap);
    if (b) {
       XMesaDestroyBuffer(b);
@@ -1390,6 +1403,7 @@ PUBLIC void
 glXCopyContext( Display *dpy, GLXContext src, GLXContext dst,
                 unsigned long mask )
 {
+   gpgpusimWait();
    XMesaContext xm_src = src->xmesaContext;
    XMesaContext xm_dst = dst->xmesaContext;
    (void) dpy;
@@ -1403,6 +1417,7 @@ glXCopyContext( Display *dpy, GLXContext src, GLXContext dst,
 PUBLIC Bool
 glXQueryExtension( Display *dpy, int *errorBase, int *eventBase )
 {
+   gpgpusimWait();
    int op, ev, err;
    /* Mesa's GLX isn't really an X extension but we try to act like one. */
    if (!XQueryExtension(dpy, GLX_EXTENSION_NAME, &op, &ev, &err))
@@ -1418,6 +1433,7 @@ glXQueryExtension( Display *dpy, int *errorBase, int *eventBase )
 PUBLIC void
 glXDestroyContext( Display *dpy, GLXContext ctx )
 {
+   gpgpusimWait();
    if (ctx) {
       GLXContext glxCtx = ctx;
       (void) dpy;
@@ -1436,6 +1452,7 @@ glXDestroyContext( Display *dpy, GLXContext ctx )
 PUBLIC Bool
 glXIsDirect( Display *dpy, GLXContext ctx )
 {
+   gpgpusimWait();
    return ctx ? ctx->isDirect : False;
 }
 
@@ -1445,6 +1462,7 @@ extern void gpgpusimEndOfFrame();
 PUBLIC void
 glXSwapBuffers( Display *dpy, GLXDrawable drawable )
 {
+   gpgpusimWait();
    gpgpusimEndOfFrame();
    XMesaBuffer buffer = XMesaFindBuffer( dpy, drawable );
    static boolean firsttime = 1, no_rast = 0;
@@ -1474,6 +1492,7 @@ PUBLIC void
 glXCopySubBufferMESA(Display *dpy, GLXDrawable drawable,
                      int x, int y, int width, int height)
 {
+   gpgpusimWait();
    XMesaBuffer buffer = XMesaFindBuffer( dpy, drawable );
    if (buffer) {
       XMesaCopySubBuffer(buffer, x, y, width, height);
@@ -1487,6 +1506,7 @@ glXCopySubBufferMESA(Display *dpy, GLXDrawable drawable,
 PUBLIC Bool
 glXQueryVersion( Display *dpy, int *maj, int *min )
 {
+   gpgpusimWait();
    (void) dpy;
    /* Return GLX version, not Mesa version */
    assert(CLIENT_MAJOR_VERSION == SERVER_MAJOR_VERSION);
@@ -1703,6 +1723,7 @@ PUBLIC int
 glXGetConfig( Display *dpy, XVisualInfo *visinfo,
                    int attrib, int *value )
 {
+   gpgpusimWait();
    XMesaVisual xmvis;
    int k;
    if (!dpy || !visinfo)
@@ -1732,6 +1753,7 @@ glXGetConfig( Display *dpy, XVisualInfo *visinfo,
 PUBLIC void
 glXWaitGL( void )
 {
+   gpgpusimWait();
    XMesaContext xmesa = XMesaGetCurrentContext();
    XMesaFlush( xmesa );
 }
@@ -1741,6 +1763,7 @@ glXWaitGL( void )
 PUBLIC void
 glXWaitX( void )
 {
+   gpgpusimWait();
    XMesaContext xmesa = XMesaGetCurrentContext();
    XMesaFlush( xmesa );
 }
@@ -1758,6 +1781,7 @@ get_extensions( void )
 PUBLIC const char *
 glXQueryExtensionsString( Display *dpy, int screen )
 {
+   gpgpusimWait();
    (void) dpy;
    (void) screen;
    return get_extensions();
@@ -1769,6 +1793,7 @@ glXQueryExtensionsString( Display *dpy, int screen )
 PUBLIC const char *
 glXQueryServerString( Display *dpy, int screen, int name )
 {
+   gpgpusimWait();
    static char version[1000];
    sprintf(version, "%d.%d %s",
 	   SERVER_MAJOR_VERSION, SERVER_MINOR_VERSION, xmesa_get_name());
@@ -1794,6 +1819,7 @@ glXQueryServerString( Display *dpy, int screen, int name )
 PUBLIC const char *
 glXGetClientString( Display *dpy, int name )
 {
+   gpgpusimWait();
    static char version[1000];
    sprintf(version, "%d.%d %s", CLIENT_MAJOR_VERSION,
 	   CLIENT_MINOR_VERSION, xmesa_get_name());
@@ -1823,6 +1849,7 @@ PUBLIC int
 glXGetFBConfigAttrib(Display *dpy, GLXFBConfig config,
                      int attribute, int *value)
 {
+   gpgpusimWait();
    XMesaVisual v = (XMesaVisual) config;
    (void) dpy;
    (void) config;
@@ -1837,6 +1864,7 @@ glXGetFBConfigAttrib(Display *dpy, GLXFBConfig config,
 PUBLIC GLXFBConfig *
 glXGetFBConfigs( Display *dpy, int screen, int *nelements )
 {
+   gpgpusimWait();
    XVisualInfo *visuals, visTemplate;
    const long visMask = VisualScreenMask;
    int i;
@@ -1867,6 +1895,7 @@ PUBLIC GLXFBConfig *
 glXChooseFBConfig(Display *dpy, int screen,
                   const int *attribList, int *nitems)
 {
+   gpgpusimWait();
    XMesaVisual xmvis;
 
    /* register ourselves as an extension on this display */
@@ -1898,6 +1927,7 @@ glXChooseFBConfig(Display *dpy, int screen,
 PUBLIC XVisualInfo *
 glXGetVisualFromFBConfig( Display *dpy, GLXFBConfig config )
 {
+   gpgpusimWait();
    if (dpy && config) {
       XMesaVisual xmvis = (XMesaVisual) config;
 #if 0      
@@ -1921,6 +1951,7 @@ PUBLIC GLXWindow
 glXCreateWindow(Display *dpy, GLXFBConfig config, Window win,
                 const int *attribList)
 {
+   gpgpusimWait();
    XMesaVisual xmvis = (XMesaVisual) config;
    XMesaBuffer xmbuf;
    if (!xmvis)
@@ -1940,6 +1971,7 @@ glXCreateWindow(Display *dpy, GLXFBConfig config, Window win,
 PUBLIC void
 glXDestroyWindow( Display *dpy, GLXWindow window )
 {
+   gpgpusimWait();
    XMesaBuffer b = XMesaFindBuffer(dpy, (Drawable) window);
    if (b)
       XMesaDestroyBuffer(b);
@@ -1952,6 +1984,7 @@ PUBLIC GLXPixmap
 glXCreatePixmap(Display *dpy, GLXFBConfig config, Pixmap pixmap,
                 const int *attribList)
 {
+   gpgpusimWait();
    XMesaVisual v = (XMesaVisual) config;
    XMesaBuffer b;
    const int *attr;
@@ -2061,6 +2094,7 @@ glXCreatePixmap(Display *dpy, GLXFBConfig config, Pixmap pixmap,
 PUBLIC void
 glXDestroyPixmap( Display *dpy, GLXPixmap pixmap )
 {
+   gpgpusimWait();
    XMesaBuffer b = XMesaFindBuffer(dpy, (Drawable)pixmap);
    if (b)
       XMesaDestroyBuffer(b);
@@ -2071,6 +2105,7 @@ glXDestroyPixmap( Display *dpy, GLXPixmap pixmap )
 PUBLIC GLXPbuffer
 glXCreatePbuffer(Display *dpy, GLXFBConfig config, const int *attribList)
 {
+   gpgpusimWait();
    XMesaVisual xmvis = (XMesaVisual) config;
    XMesaBuffer xmbuf;
    const int *attrib;
@@ -2133,6 +2168,7 @@ glXCreatePbuffer(Display *dpy, GLXFBConfig config, const int *attribList)
 PUBLIC void
 glXDestroyPbuffer( Display *dpy, GLXPbuffer pbuf )
 {
+   gpgpusimWait();
    XMesaBuffer b = XMesaFindBuffer(dpy, pbuf);
    if (b) {
       XMesaDestroyBuffer(b);
@@ -2144,6 +2180,7 @@ PUBLIC void
 glXQueryDrawable(Display *dpy, GLXDrawable draw, int attribute,
                  unsigned int *value)
 {
+   gpgpusimWait();
    GLuint width, height;
    XMesaBuffer xmbuf = XMesaFindBuffer(dpy, draw);
    if (!xmbuf) {
@@ -2191,6 +2228,7 @@ PUBLIC GLXContext
 glXCreateNewContext( Display *dpy, GLXFBConfig config,
                      int renderType, GLXContext shareCtx, Bool direct )
 {
+   gpgpusimWait();
    XMesaVisual xmvis = (XMesaVisual) config;
 
    if (!dpy || !config ||
@@ -2207,6 +2245,7 @@ glXCreateNewContext( Display *dpy, GLXFBConfig config,
 PUBLIC int
 glXQueryContext( Display *dpy, GLXContext ctx, int attribute, int *value )
 {
+   gpgpusimWait();
    GLXContext glxCtx = ctx;
    XMesaContext xmctx = glxCtx->xmesaContext;
 
@@ -2236,6 +2275,7 @@ glXQueryContext( Display *dpy, GLXContext ctx, int attribute, int *value )
 PUBLIC void
 glXSelectEvent( Display *dpy, GLXDrawable drawable, unsigned long mask )
 {
+   gpgpusimWait();
    XMesaBuffer xmbuf = XMesaFindBuffer(dpy, drawable);
    if (xmbuf)
       xmbuf->selectedEvents = mask;
@@ -2245,6 +2285,7 @@ glXSelectEvent( Display *dpy, GLXDrawable drawable, unsigned long mask )
 PUBLIC void
 glXGetSelectedEvent(Display *dpy, GLXDrawable drawable, unsigned long *mask)
 {
+   gpgpusimWait();
    XMesaBuffer xmbuf = XMesaFindBuffer(dpy, drawable);
    if (xmbuf)
       *mask = xmbuf->selectedEvents;
@@ -2259,6 +2300,7 @@ glXGetSelectedEvent(Display *dpy, GLXDrawable drawable, unsigned long *mask)
 PUBLIC int
 glXSwapIntervalSGI(int interval)
 {
+   gpgpusimWait();
    (void) interval;
    return 0;
 }
@@ -2272,6 +2314,7 @@ static unsigned int FrameCounter = 0;
 PUBLIC int
 glXGetVideoSyncSGI(unsigned int *count)
 {
+   gpgpusimWait();
    /* this is a bogus implementation */
    *count = FrameCounter++;
    return 0;
@@ -2280,6 +2323,7 @@ glXGetVideoSyncSGI(unsigned int *count)
 PUBLIC int
 glXWaitVideoSyncSGI(int divisor, int remainder, unsigned int *count)
 {
+   gpgpusimWait();
    if (divisor <= 0 || remainder < 0)
       return GLX_BAD_VALUE;
    /* this is a bogus implementation */
@@ -2298,6 +2342,7 @@ PUBLIC Bool
 glXMakeCurrentReadSGI(Display *dpy, GLXDrawable draw, GLXDrawable read,
                       GLXContext ctx)
 {
+   gpgpusimWait();
    return glXMakeContextCurrent( dpy, draw, read, ctx );
 }
 
@@ -2317,6 +2362,7 @@ PUBLIC GLXVideoSourceSGIX
 glXCreateGLXVideoSourceSGIX(Display *dpy, int screen, VLServer server,
                             VLPath path, int nodeClass, VLNode drainNode)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) screen;
    (void) server;
@@ -2329,6 +2375,7 @@ glXCreateGLXVideoSourceSGIX(Display *dpy, int screen, VLServer server,
 PUBLIC void
 glXDestroyGLXVideoSourceSGIX(Display *dpy, GLXVideoSourceSGIX src)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) src;
 }
@@ -2341,6 +2388,7 @@ glXDestroyGLXVideoSourceSGIX(Display *dpy, GLXVideoSourceSGIX src)
 PUBLIC void
 glXFreeContextEXT(Display *dpy, GLXContext context)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) context;
 }
@@ -2348,6 +2396,7 @@ glXFreeContextEXT(Display *dpy, GLXContext context)
 PUBLIC GLXContextID
 glXGetContextIDEXT(const GLXContext context)
 {
+   gpgpusimWait();
    (void) context;
    return 0;
 }
@@ -2355,6 +2404,7 @@ glXGetContextIDEXT(const GLXContext context)
 PUBLIC GLXContext
 glXImportContextEXT(Display *dpy, GLXContextID contextID)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) contextID;
    return 0;
@@ -2364,6 +2414,7 @@ PUBLIC int
 glXQueryContextInfoEXT(Display *dpy, GLXContext context, int attribute,
                        int *value)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) context;
    (void) attribute;
@@ -2379,6 +2430,7 @@ PUBLIC int
 glXGetFBConfigAttribSGIX(Display *dpy, GLXFBConfigSGIX config,
                          int attribute, int *value)
 {
+   gpgpusimWait();
    return glXGetFBConfigAttrib(dpy, config, attribute, value);
 }
 
@@ -2386,6 +2438,7 @@ PUBLIC GLXFBConfigSGIX *
 glXChooseFBConfigSGIX(Display *dpy, int screen, int *attrib_list,
                       int *nelements)
 {
+   gpgpusimWait();
    return (GLXFBConfig *) glXChooseFBConfig(dpy, screen,
                                             attrib_list, nelements);
 }
@@ -2395,6 +2448,7 @@ PUBLIC GLXPixmap
 glXCreateGLXPixmapWithConfigSGIX(Display *dpy, GLXFBConfigSGIX config,
                                  Pixmap pixmap)
 {
+   gpgpusimWait();
    XMesaVisual xmvis = (XMesaVisual) config;
    XMesaBuffer xmbuf = XMesaCreatePixmapBuffer(xmvis, pixmap, 0);
    return xmbuf->ws.drawable; /* need to return an X ID */
@@ -2406,6 +2460,7 @@ glXCreateContextWithConfigSGIX(Display *dpy, GLXFBConfigSGIX config,
                                int renderType, GLXContext shareCtx,
                                Bool direct)
 {
+   gpgpusimWait();
    XMesaVisual xmvis = (XMesaVisual) config;
 
    if (!dpy || !config ||
@@ -2422,6 +2477,7 @@ glXCreateContextWithConfigSGIX(Display *dpy, GLXFBConfigSGIX config,
 PUBLIC XVisualInfo *
 glXGetVisualFromFBConfigSGIX(Display *dpy, GLXFBConfigSGIX config)
 {
+   gpgpusimWait();
    return glXGetVisualFromFBConfig(dpy, config);
 }
 
@@ -2429,6 +2485,7 @@ glXGetVisualFromFBConfigSGIX(Display *dpy, GLXFBConfigSGIX config)
 PUBLIC GLXFBConfigSGIX
 glXGetFBConfigFromVisualSGIX(Display *dpy, XVisualInfo *vis)
 {
+   gpgpusimWait();
    XMesaVisual xmvis = find_glx_visual(dpy, vis);
    if (!xmvis) {
       /* This visual wasn't found with glXChooseVisual() */
@@ -2447,6 +2504,7 @@ glXCreateGLXPbufferSGIX(Display *dpy, GLXFBConfigSGIX config,
                         unsigned int width, unsigned int height,
                         int *attribList)
 {
+   gpgpusimWait();
    XMesaVisual xmvis = (XMesaVisual) config;
    XMesaBuffer xmbuf;
    const int *attrib;
@@ -2484,6 +2542,7 @@ glXCreateGLXPbufferSGIX(Display *dpy, GLXFBConfigSGIX config,
 PUBLIC void
 glXDestroyGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf)
 {
+   gpgpusimWait();
    XMesaBuffer xmbuf = XMesaFindBuffer(dpy, pbuf);
    if (xmbuf) {
       XMesaDestroyBuffer(xmbuf);
@@ -2495,6 +2554,7 @@ PUBLIC int
 glXQueryGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf, int attribute,
                        unsigned int *value)
 {
+   gpgpusimWait();
    const XMesaBuffer xmbuf = XMesaFindBuffer(dpy, pbuf);
 
    if (!xmbuf) {
@@ -2528,6 +2588,7 @@ glXQueryGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf, int attribute,
 PUBLIC void
 glXSelectEventSGIX(Display *dpy, GLXDrawable drawable, unsigned long mask)
 {
+   gpgpusimWait();
    XMesaBuffer xmbuf = XMesaFindBuffer(dpy, drawable);
    if (xmbuf) {
       /* Note: we'll never generate clobber events */
@@ -2540,6 +2601,7 @@ PUBLIC void
 glXGetSelectedEventSGIX(Display *dpy, GLXDrawable drawable,
                         unsigned long *mask)
 {
+   gpgpusimWait();
    XMesaBuffer xmbuf = XMesaFindBuffer(dpy, drawable);
    if (xmbuf) {
       *mask = xmbuf->selectedEvents;
@@ -2556,6 +2618,7 @@ glXGetSelectedEventSGIX(Display *dpy, GLXDrawable drawable,
 PUBLIC void
 glXCushionSGI(Display *dpy, Window win, float cushion)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) win;
    (void) cushion;
@@ -2569,6 +2632,7 @@ PUBLIC int
 glXBindChannelToWindowSGIX(Display *dpy, int screen, int channel,
                            Window window)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) screen;
    (void) channel;
@@ -2580,6 +2644,7 @@ PUBLIC int
 glXChannelRectSGIX(Display *dpy, int screen, int channel,
                    int x, int y, int w, int h)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) screen;
    (void) channel;
@@ -2594,6 +2659,7 @@ PUBLIC int
 glXQueryChannelRectSGIX(Display *dpy, int screen, int channel,
                         int *x, int *y, int *w, int *h)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) screen;
    (void) channel;
@@ -2608,6 +2674,7 @@ PUBLIC int
 glXQueryChannelDeltasSGIX(Display *dpy, int screen, int channel,
                           int *dx, int *dy, int *dw, int *dh)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) screen;
    (void) channel;
@@ -2621,6 +2688,7 @@ glXQueryChannelDeltasSGIX(Display *dpy, int screen, int channel,
 PUBLIC int
 glXChannelRectSyncSGIX(Display *dpy, int screen, int channel, GLenum synctype)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) screen;
    (void) channel;
@@ -2637,6 +2705,7 @@ PUBLIC Bool
 glXAssociateDMPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuffer,
                           DMparams *params, DMbuffer dmbuffer)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) pbuffer;
    (void) params;
@@ -2651,6 +2720,7 @@ glXAssociateDMPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuffer,
 PUBLIC void
 glXJoinSwapGroupSGIX(Display *dpy, GLXDrawable drawable, GLXDrawable member)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) drawable;
    (void) member;
@@ -2663,6 +2733,7 @@ glXJoinSwapGroupSGIX(Display *dpy, GLXDrawable drawable, GLXDrawable member)
 PUBLIC void
 glXBindSwapBarrierSGIX(Display *dpy, GLXDrawable drawable, int barrier)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) drawable;
    (void) barrier;
@@ -2671,6 +2742,7 @@ glXBindSwapBarrierSGIX(Display *dpy, GLXDrawable drawable, int barrier)
 PUBLIC Bool
 glXQueryMaxSwapBarriersSGIX(Display *dpy, int screen, int *max)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) screen;
    (void) max;
@@ -2685,6 +2757,7 @@ PUBLIC Status
 glXGetTransparentIndexSUN(Display *dpy, Window overlay, Window underlay,
                           long *pTransparent)
 {
+   gpgpusimWait();
    (void) dpy;
    (void) overlay;
    (void) underlay;
@@ -2703,6 +2776,7 @@ glXGetTransparentIndexSUN(Display *dpy, Window overlay, Window underlay,
 PUBLIC Bool
 glXReleaseBuffersMESA( Display *dpy, GLXDrawable d )
 {
+   gpgpusimWait();
    XMesaBuffer b = XMesaFindBuffer(dpy, d);
    if (b) {
       XMesaDestroyBuffer(b);
@@ -2717,6 +2791,7 @@ PUBLIC void
 glXBindTexImageEXT(Display *dpy, GLXDrawable drawable, int buffer,
                         const int *attrib_list)
 {
+   gpgpusimWait();
    XMesaBuffer b = XMesaFindBuffer(dpy, drawable);
    if (b)
       XMesaBindTexImage(dpy, b, buffer, attrib_list);
@@ -2725,6 +2800,7 @@ glXBindTexImageEXT(Display *dpy, GLXDrawable drawable, int buffer,
 PUBLIC void
 glXReleaseTexImageEXT(Display *dpy, GLXDrawable drawable, int buffer)
 {
+   gpgpusimWait();
    XMesaBuffer b = XMesaFindBuffer(dpy, drawable);
    if (b)
       XMesaReleaseTexImage(dpy, b, buffer);
