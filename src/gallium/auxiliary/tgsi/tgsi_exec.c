@@ -2234,7 +2234,7 @@ fetch_sampler_unit(struct tgsi_exec_machine *mach,
 
 
 void __attribute__ ((visibility ("default"))) mesaFetchTxf(struct tgsi_exec_machine *mach,
-         uint modifier, uint unit, int dim, float* coord,
+         uint modifier, uint unit, int dim, float* coords,
          int num_coord, float* dst, int num_dst, int quadIdx){
    /*union tgsi_exec_channel r[4];
    uint chan;
@@ -2318,7 +2318,7 @@ void __attribute__ ((visibility ("default"))) mesaFetchTxf(struct tgsi_exec_mach
 }
 
 void __attribute__ ((visibility ("default"))) mesaFetchTexture(struct tgsi_exec_machine *mach,
-         uint modifier, uint unit, uint sampler, int dim, float* coord,
+         uint modifier, uint unit, uint sampler, int dim, float* coords,
          int num_coord, float* dst, int num_dst, int quadIdx)
 {
    const union tgsi_exec_channel *args[5], *proj = NULL;
@@ -2329,14 +2329,11 @@ void __attribute__ ((visibility ("default"))) mesaFetchTexture(struct tgsi_exec_
    int8_t offsets[3];
    int shadow_ref, i, j;
 
-
    assert(quadIdx < TGSI_QUAD_SIZE);
 
    for(i=0; i < TGSI_QUAD_SIZE; i++){
      for(j=0; j < num_coord; j++){
-       if(i == quadIdx)
-         ic[j].f[i] = coord[j];
-       else ic[j].f[i] = 0.0;
+        ic[j].f[i] = coords[i*TGSI_QUAD_SIZE+j];
      }
    }
 
@@ -2365,9 +2362,7 @@ void __attribute__ ((visibility ("default"))) mesaFetchTexture(struct tgsi_exec_
          //fetch_source(mach, &r[last], &inst->Src[0], TGSI_CHAN_W, TGSI_EXEC_DATA_FLOAT);
 
         for(i=0; i < TGSI_QUAD_SIZE; i++){
-          if(i == quadIdx)
-            ic[last].f[i] = coord[j];
-          else ic[last].f[i] = 0.0;
+           ic[last].f[i] = coords[i*TGSI_QUAD_SIZE+last];
         }
       } else {
         assert(0 && "not supporting the case when sampler != 1");

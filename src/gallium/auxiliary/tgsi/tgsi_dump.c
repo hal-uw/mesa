@@ -1094,6 +1094,7 @@ const char *tgsi_memory_names[3] =
 
 extern void gpgpusimSetShaderRegs(int shader_type, int usedRegs);
 extern void gpgpusimSetShaderCode(int shader_type, int usedRegs);
+extern bool gpgpusimGenerateDepthCode(FILE* inst_stream);
 
 typedef struct shader_stats_type {
   int usedRegs;
@@ -1431,7 +1432,7 @@ gen_ptx_instruction(
      fprintf(inst_stream, "%s", ptx_opcodes[opcode].name);
      if(strlen(textureType) > 0)
        fprintf(inst_stream, ".%s", textureType);
-     fprintf(inst_stream, ".v%d.f32.f32 ", dstCount);
+     fprintf(inst_stream, ".v2.f32.f32 ", dstCount);
 
      writeMask = dst->Register.WriteMask;
      int maskBit = -1;
@@ -1513,7 +1514,8 @@ gen_ptx_instruction(
    asprintf(&ptxInst, "%s%s%s", inst_name, satStr, ptx_opcodes[opcode].ptx_type);
 
    bool dpOp = false;
-   if(ptx_opcodes[opcode].name == "DP2"){
+   if((strcmp(ptx_opcodes[opcode].name, "dp2")==0)
+      || (strcmp(ptx_opcodes[opcode].name, "dp3")==0)){
      dpOp = true;
    }
 
@@ -1623,7 +1625,7 @@ gen_ptx_instruction(
       char* dstRegName = (char*)get_register_dst_name( dst, 0);
       //if writing to color then add stp instructoin afterwards
       if(strcmp(dstRegName, "COLOR0.x") == 0) {
-        fprintf(inst_stream, "stp.global.u32;\n");
+        fprintf(inst_stream, "@fflag stp.global.u32;\n");
       }
 
       //first_reg = FALSE;
@@ -2022,9 +2024,12 @@ static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int 
   if(shader_type == GL_FRAGMENT_SHADER) {
     fprintf(inst_stream, ".entry fp%d_%d (.param .u64 __cudaparm_fp%d_%d_outputData){\n",
             frame_num, drawcall_num, frame_num, drawcall_num);
-    fprintf(inst_stream, ".reg .pred pexit;\n");
-    fprintf(inst_stream, "setp.eq.u32 pexit, 0, %%fragment_active;\n");
-    fprintf(inst_stream, "@pexit exit;\n");
+    fprintf(inst_stream, ".reg .pred qflag, fflag;\n");
+    fprintf(inst_stream, "setp.ne.u32 qflag, 0, %%quad_active;\n");
+    fprintf(inst_stream, "setp.ne.u32 fflag, 0, %%fragment_active;\n");
+    fprintf(inst_stream, "@!qflag exit;\n");
+   //TODO check if depth value changed by the shader, if so move depth code to the end
+    gpgpusimGenerateDepthCode(inst_stream);
   } else if(shader_type == GL_VERTEX_SHADER) {
     assert(0);
   } else {

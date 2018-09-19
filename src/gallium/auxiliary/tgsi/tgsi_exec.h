@@ -560,11 +560,11 @@ tgsi_exec_get_shader_param(enum pipe_shader_cap param)
 
 
 PUBLIC void mesaFetchTexture(struct tgsi_exec_machine *mach,
-         uint modifier, uint unit, uint sampler, int dim, float* coord,
+         uint modifier, uint unit, uint sampler, int dim, float* coords,
          int num_coord, float* dst, int num_dst, int quadIdx);
 
 PUBLIC void mesaFetchTxf(struct tgsi_exec_machine *mach,
-         uint modifier, uint unit, int dim, float* coord,
+         uint modifier, uint unit, int dim, float* coords,
          int num_coord, float* dst, int num_dst, int quadIdx);
 
 #if defined __cplusplus
