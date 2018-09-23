@@ -1625,7 +1625,8 @@ gen_ptx_instruction(
       char* dstRegName = (char*)get_register_dst_name( dst, 0);
       //if writing to color then add stp instructoin afterwards
       if(strcmp(dstRegName, "COLOR0.x") == 0) {
-        fprintf(inst_stream, "@fflag stp.global.u32;\n");
+         fprintf(inst_stream, "setp.ne.u32 fflag, 0, %%fragment_active;\n");
+         fprintf(inst_stream, "@fflag stp.global.u32;\n");
       }
 
       //first_reg = FALSE;
