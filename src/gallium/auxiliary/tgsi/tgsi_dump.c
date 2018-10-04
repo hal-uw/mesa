@@ -1371,7 +1371,6 @@ get_register_src_name(
    return srcRegNameFull;
 }
 
-
 //iter_instruction(
 static boolean
 gen_ptx_instruction(
@@ -1523,8 +1522,41 @@ gen_ptx_instruction(
       const struct tgsi_full_dst_register *dst = &inst->Dst[dst_i];
 
       uint writeMask = dst->Register.WriteMask;
-      uint dpBit = -1;
+      int dstCount = 0;
+      while(writeMask){
+         dstCount++;
+         writeMask >>= 1;
+      }
 
+      int maskBit = -1;
+      bool useDummyDst = false;
+      if(dstCount > 1 && !dpOp){
+         writeMask = dst->Register.WriteMask;
+         while(writeMask) {
+            maskBit++;
+            bool enabled = (1 & writeMask) != 0;
+            writeMask >>= 1;
+            if(!enabled) continue;
+            int dst_i;
+            for(dst_i = 0; dst_i < maskBit; dst_i++){
+               for (src_i = 0; src_i < inst->Instruction.NumSrcRegs; src_i++) {
+                  const struct tgsi_full_src_register *src = &inst->Src[src_i];
+                  const char* dst_name = get_register_dst_name(dst, dst_i);
+                  const char* src_name = get_register_src_name(src, maskBit);
+                  if(0==strcmp(dst_name, src_name)){
+                     printf("dst=%s, src=%s\n", dst_name, src_name);
+                     useDummyDst = true;
+                     break;
+                  }
+               }
+               if(useDummyDst) break;
+            }
+            if(useDummyDst) break;
+         }
+      }
+
+      writeMask = dst->Register.WriteMask;
+      uint dpBit = -1;
       if(dpOp){
         while(writeMask) {
           dpBit++;
@@ -1535,8 +1567,7 @@ gen_ptx_instruction(
         writeMask = 0xF;
       }
 
-      int maskBit = -1;
-
+      maskBit = -1;
       while(writeMask) {
         maskBit++;
         bool enabled = (1 & writeMask) != 0;
@@ -1583,7 +1614,12 @@ gen_ptx_instruction(
         } else {
           dstRegName = (char*)get_register_dst_name( dst, maskBit);
         }
-        fprintf(inst_stream, "%s %s", ptxInst, dstRegName);
+
+        if(useDummyDst){
+           fprintf(inst_stream, "%s %s%d", ptxInst, "dummy_", maskBit);
+        } else {
+           fprintf(inst_stream, "%s %s", ptxInst, dstRegName);
+        }
 
         for (src_i = 0; src_i < inst->Instruction.NumSrcRegs; src_i++) {
           fprintf(inst_stream, ", %s", srcRegNames[src_i]);
@@ -1600,6 +1636,19 @@ gen_ptx_instruction(
         fprintf(inst_stream, ";\n");
 
       }//end while
+
+      if(useDummyDst){
+         maskBit = -1;
+         writeMask = dst->Register.WriteMask;
+         while(writeMask) {
+            maskBit++;
+            bool enabled = (1 & writeMask) != 0;
+            writeMask >>= 1;
+            if(!enabled) continue;
+            char* dstRegName = (char*)get_register_dst_name( dst, maskBit);
+            fprintf(inst_stream, "mov.f32 %s, %s%d;\n", dstRegName, "dummy_", maskBit);
+         }
+      }
 
       /*maskBit = -1;
       if(dpOp){
