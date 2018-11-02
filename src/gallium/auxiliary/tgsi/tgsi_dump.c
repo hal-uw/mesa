@@ -1095,6 +1095,7 @@ const char *tgsi_memory_names[3] =
 extern void gpgpusimSetShaderRegs(int shader_type, int usedRegs);
 extern void gpgpusimSetShaderCode(int shader_type, int usedRegs);
 extern bool gpgpusimGenerateDepthCode(FILE* inst_stream);
+extern bool gpgpusimGenerateBlendCode(FILE* inst_stream);
 
 typedef struct shader_stats_type {
   int usedRegs;
@@ -1674,8 +1675,7 @@ gen_ptx_instruction(
       char* dstRegName = (char*)get_register_dst_name( dst, 0);
       //if writing to color then add stp instructoin afterwards
       if(strcmp(dstRegName, "COLOR0.x") == 0) {
-         fprintf(inst_stream, "setp.ne.u32 fflag, 0, %%fragment_active;\n");
-         fprintf(inst_stream, "@fflag stp.global.u32;\n");
+         gpgpusimGenerateBlendCode(inst_stream);
       }
 
       //first_reg = FALSE;
@@ -2075,6 +2075,7 @@ static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int 
     fprintf(inst_stream, ".entry fp%d_%d (.param .u64 __cudaparm_fp%d_%d_outputData){\n",
             frame_num, drawcall_num, frame_num, drawcall_num);
     fprintf(inst_stream, ".reg .pred qflag, fflag;\n");
+    fprintf(inst_stream, ".reg .u32 %%color;\n");
     fprintf(inst_stream, "setp.ne.u32 qflag, 0, %%quad_active;\n");
     fprintf(inst_stream, "setp.ne.u32 fflag, 0, %%fragment_active;\n");
     fprintf(inst_stream, "@!qflag exit;\n");
