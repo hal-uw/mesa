@@ -703,6 +703,7 @@ iter_instruction(
 static boolean
 gen_ptx_instruction(
 //iter_instruction(
+   int shader_type,
    FILE* inst_stream,
    struct tgsi_full_instruction *inst );
 
@@ -1142,7 +1143,7 @@ static const ptx_opcode_t ptx_opcodes [] = //[TGSI_OPCODE_LAST] =
 #define ENM(E,ENUMS)    printf( "%s", ENUMS[E])
 
 static char*
-get_register_dst_name(
+get_register_dst_name(int shader_type,
    const struct tgsi_full_dst_register *dst, int swiz)
 {
    char* dstRegName[3];
@@ -1217,12 +1218,12 @@ get_register_dst_name(
 
 
    bool special_reg = false;
-   if(!strcmp(dstRegName[0], "OUT")) {
+   if(!strcmp(dstRegName[0], "OUT")){
      special_reg = true;
    }
 
    if(special_reg){
-     if(dr){
+     if(dr  && (shader_type == GL_FRAGMENT_SHADER)){
        asprintf(&dstRegNameFull, "%s%s%s.%s", dr->reg_value, dstRegName[1], dstRegName[2], dst_swizzle);
      } else {
        asprintf(&dstRegNameFull, "%s%s%s.%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
@@ -1272,7 +1273,7 @@ static const char* get_src_swizzle(const struct tgsi_full_src_register* src, int
 }
 
 static char*
-get_register_src_name(
+get_register_src_name(int shader_type,
    const struct tgsi_full_src_register *src, int swiz )
 {
    char* srcRegName[3];
@@ -1345,13 +1346,18 @@ get_register_src_name(
 
 
    bool special_reg = false;
-   if(!strcmp(srcRegName[0], "IN")
+   bool isIN = !strcmp(srcRegName[0], "IN");
+   bool isCONST = !strcmp(srcRegName[0], "CONST");
+   /*if(!strcmp(srcRegName[0], "IN")
       || !strcmp(srcRegName[0],"CONST")){
      special_reg = true;
-   }
+   }*/
 
-   if(special_reg){
-     asprintf(&srcRegNameFull, "%s%s%s.%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
+   if(isIN || isCONST){ 
+      if((shader_type == GL_FRAGMENT_SHADER) || isCONST) 
+        asprintf(&srcRegNameFull, "%s%s%s.%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
+      else 
+        asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
    } else {
      //asprintf(&srcRegNameFull, "%s%s%s%s", srcRegName[0], srcRegName[1], srcRegName[2], src_swizzle);
      if(rd == NULL){
@@ -1375,6 +1381,7 @@ get_register_src_name(
 //iter_instruction(
 static boolean
 gen_ptx_instruction(
+   int shader_type,
    FILE* inst_stream,
    struct tgsi_full_instruction *inst)
 {
@@ -1449,7 +1456,7 @@ gen_ptx_instruction(
        }
 
       // const char* dst_swizzle = tgsi_swizzle_names[maskBit];
-       char* dstRegName = (char*)get_register_dst_name( dst, maskBit);
+       char* dstRegName = (char*)get_register_dst_name( shader_type, dst, maskBit);
 
        fprintf(inst_stream, "%s ", dstRegName);
        if(writeMask)
@@ -1477,7 +1484,7 @@ gen_ptx_instruction(
      fprintf(inst_stream, "{ ");
      int sw = 0;
      for(sw =0; sw < textureDim; sw++){
-       const char* coords_src_name = get_register_src_name(coords_reg, sw);
+       const char* coords_src_name = get_register_src_name(shader_type, coords_reg, sw);
        //const char* swizzle = get_src_swizzle(coords_reg, sw);
        fprintf(inst_stream, "%s", coords_src_name);
        if(sw != textureDim-1){
@@ -1542,8 +1549,8 @@ gen_ptx_instruction(
             for(dst_i = 0; dst_i < maskBit; dst_i++){
                for (src_i = 0; src_i < inst->Instruction.NumSrcRegs; src_i++) {
                   const struct tgsi_full_src_register *src = &inst->Src[src_i];
-                  const char* dst_name = get_register_dst_name(dst, dst_i);
-                  const char* src_name = get_register_src_name(src, maskBit);
+                  const char* dst_name = get_register_dst_name(shader_type, dst, dst_i);
+                  const char* src_name = get_register_src_name(shader_type, src, maskBit);
                   if(0==strcmp(dst_name, src_name)){
                      printf("dst=%s, src=%s\n", dst_name, src_name);
                      useDummyDst = true;
@@ -1593,7 +1600,7 @@ gen_ptx_instruction(
           //TODO
 
           //const char * src_swizzle = get_src_swizzle(src, maskBit);
-          const char* src_name = get_register_src_name(src, maskBit);
+          const char* src_name = get_register_src_name(shader_type, src, maskBit);
           snprintf((char*) &srcRegNames[src_i], 100, "%s%s", srcSign, src_name);
           free((void*)src_name);
 
@@ -1611,9 +1618,9 @@ gen_ptx_instruction(
           dstRegName = dpReg;*/
           free((void*) ptxInst);
           asprintf(&ptxInst, "%s", "mad.f32");
-          dstRegName = (char*)get_register_dst_name( dst, dpBit);
+          dstRegName = (char*)get_register_dst_name(shader_type, dst, dpBit);
         } else {
-          dstRegName = (char*)get_register_dst_name( dst, maskBit);
+          dstRegName = (char*)get_register_dst_name(shader_type, dst, maskBit);
         }
 
         if(useDummyDst){
@@ -1646,7 +1653,7 @@ gen_ptx_instruction(
             bool enabled = (1 & writeMask) != 0;
             writeMask >>= 1;
             if(!enabled) continue;
-            char* dstRegName = (char*)get_register_dst_name( dst, maskBit);
+            char* dstRegName = (char*)get_register_dst_name(shader_type, dst, maskBit);
             fprintf(inst_stream, "mov.f32 %s, %s%d;\n", dstRegName, "dummy_", maskBit);
          }
       }
@@ -1672,7 +1679,7 @@ gen_ptx_instruction(
         }
       }*/
 
-      char* dstRegName = (char*)get_register_dst_name( dst, 0);
+      char* dstRegName = (char*)get_register_dst_name(shader_type, dst, 0);
       //if writing to color then add stp instructoin afterwards
       if(strcmp(dstRegName, "COLOR0.x") == 0) {
          gpgpusimGenerateBlendCode(inst_stream);
@@ -1734,6 +1741,7 @@ gen_ptx_instruction(
 
 static boolean
 gen_ptx_declaration(
+   int shader_type,
    FILE* inst_stream,
    struct tgsi_iterate_context *iter,
    struct tgsi_full_declaration *decl,
@@ -1783,9 +1791,9 @@ gen_ptx_declaration(
    char* replace_reg_name = NULL;
 
    if (decl->Declaration.Semantic) {
-      replace_reg = true;
+      replace_reg = (shader_type == GL_FRAGMENT_SHADER);
       //register_dic_t* sd = (struct register_dic_t*) malloc(sizeof(struct register_dic_t));
-      if (decl->Semantic.Index != 0 ||
+      if ( decl->Semantic.Index != 0 ||
           decl->Semantic.Name == TGSI_SEMANTIC_TEXCOORD ||
           decl->Semantic.Name == TGSI_SEMANTIC_GENERIC) {
          //asprintf(&sd->reg_key, "%s%d", tgsi_semantic_names[decl->Semantic.Name], decl->Semantic.Index );
@@ -1845,21 +1853,44 @@ gen_ptx_declaration(
      HASH_ADD_KEYPTR( hh, register_dictionary, sd->reg_key, strlen(sd->reg_key), sd );
      //printf("replacing %s with %s\n", sd->reg_key, sd->reg_value);
    } else {
+     bool load_vx = (shader_type == GL_VERTEX_SHADER) && (!strcmp(file_name, "IN"));
+
+     //load input register 
+
      for(regNum = 0; regNum < regsCount; regNum ++){
+       int actual_num = regNum + decl->Range.First;
        if (writemask != TGSI_WRITEMASK_XYZW) {
-         if (writemask & TGSI_WRITEMASK_X)
-           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "x");
-         if (writemask & TGSI_WRITEMASK_Y)
-           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "y");
-         if (writemask & TGSI_WRITEMASK_Z)
-           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "z");
-         if (writemask & TGSI_WRITEMASK_W)
-           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "w");
+         if (writemask & TGSI_WRITEMASK_X){
+           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "x");
+           if(load_vx)
+              fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "x", actual_num, "x");
+         }
+         if (writemask & TGSI_WRITEMASK_Y){
+           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "y");
+           if(load_vx)
+              fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "y", actual_num, "y");
+         }
+         if (writemask & TGSI_WRITEMASK_Z){
+           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "z");
+           if(load_vx)
+              fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "z", actual_num, "z");
+         }
+         if (writemask & TGSI_WRITEMASK_W){
+           fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "w");
+           if(load_vx)
+              fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "w", actual_num, "w");
+         }
        } else {
-         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "x");
-         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "y");
-         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "z");
-         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, regNum, "w");
+         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "x");
+         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "y");
+         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "z");
+         fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "w");
+         if(load_vx){
+           fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "x", actual_num, "x");
+           fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "y", actual_num, "y");
+           fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "z", actual_num, "z");
+           fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "w", actual_num, "w");
+         }
        }
      }
    }
@@ -2082,7 +2113,8 @@ static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int 
    //TODO check if depth value changed by the shader, if so move depth code to the end
     gpgpusimGenerateDepthCode(inst_stream);
   } else if(shader_type == GL_VERTEX_SHADER) {
-    assert(0);
+    fprintf(inst_stream, ".entry vp%d_%d (.param .u64 __cudaparm_vp%d_%d_inputData){\n",
+            frame_num, drawcall_num, frame_num, drawcall_num);
   } else {
     printf("TGSI to PTX: unsupported shader type %d\n", shader_type);
     abort();
@@ -2160,11 +2192,11 @@ generate_tgsi_ptx_code(
 
       switch (parse.FullToken.Token.Type) {
       case TGSI_TOKEN_TYPE_INSTRUCTION:
-        gen_ptx_instruction(mid_inst_stream, &parse.FullToken.FullInstruction );
+        gen_ptx_instruction(shader_type, mid_inst_stream, &parse.FullToken.FullInstruction );
         break;
 
       case TGSI_TOKEN_TYPE_DECLARATION:
-         gen_ptx_declaration(mid_inst_stream, &ctx.iter, &parse.FullToken.FullDeclaration, &shader_stats);
+         gen_ptx_declaration(shader_type, mid_inst_stream, &ctx.iter, &parse.FullToken.FullDeclaration, &shader_stats);
          break;
 
       case TGSI_TOKEN_TYPE_IMMEDIATE:
@@ -2199,7 +2231,9 @@ generate_tgsi_ptx_code(
 
    //printf("%s", mid_inst_str);
 
-   gpgpusimSetShaderRegs(shader_type, shader_stats.usedRegs);
+   printf("%d used regs %d\n", shader_type, shader_stats.usedRegs);
+   //each vector register is 4 scalar regs
+   gpgpusimSetShaderRegs(shader_type, shader_stats.usedRegs*4);
 
    return NULL;
 }
