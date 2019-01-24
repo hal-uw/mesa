@@ -1863,22 +1863,22 @@ gen_ptx_declaration(
          if (writemask & TGSI_WRITEMASK_X){
            fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "x");
            if(load_vx)
-              fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "x", actual_num, "x");
+              fprintf(inst_stream, "ldv.const.constf32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "x", actual_num, "x");
          }
          if (writemask & TGSI_WRITEMASK_Y){
            fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "y");
            if(load_vx)
-              fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "y", actual_num, "y");
+              fprintf(inst_stream, "ldv.const.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "y", actual_num, "y");
          }
          if (writemask & TGSI_WRITEMASK_Z){
            fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "z");
            if(load_vx)
-              fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "z", actual_num, "z");
+              fprintf(inst_stream, "ldv.const.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "z", actual_num, "z");
          }
          if (writemask & TGSI_WRITEMASK_W){
            fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "w");
            if(load_vx)
-              fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "w", actual_num, "w");
+              fprintf(inst_stream, "ldv.const.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "w", actual_num, "w");
          }
        } else {
          fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "x");
@@ -1886,10 +1886,10 @@ gen_ptx_declaration(
          fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "z");
          fprintf(inst_stream, "%s %s%d%s;\n", regDef, file_name, actual_num, "w");
          if(load_vx){
-           fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "x", actual_num, "x");
-           fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "y", actual_num, "y");
-           fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "z", actual_num, "z");
-           fprintf(inst_stream, "ldv.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "w", actual_num, "w");
+           fprintf(inst_stream, "ldv.const.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "x", actual_num, "x");
+           fprintf(inst_stream, "ldv.const.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "y", actual_num, "y");
+           fprintf(inst_stream, "ldv.const.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "z", actual_num, "z");
+           fprintf(inst_stream, "ldv.const.f32 %s%d%s, VATTRIB%d.%s;\n", file_name, actual_num, "w", actual_num, "w");
          }
        }
      }
