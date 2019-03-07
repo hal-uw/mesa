@@ -2113,6 +2113,7 @@ static void add_ptx_head(FILE* inst_stream, int shader_type, int frame_num, int 
   } else if(shader_type == GL_VERTEX_SHADER) {
     fprintf(inst_stream, ".entry vp%d_%d (.param .u64 __cudaparm_vp%d_%d_inputData){\n",
             frame_num, drawcall_num, frame_num, drawcall_num);
+    fprintf(inst_stream, "VERTEX_CODE\n");
   } else {
     printf("TGSI to PTX: unsupported shader type %d\n", shader_type);
     abort();
