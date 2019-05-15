@@ -1142,7 +1142,7 @@ static const ptx_opcode_t ptx_opcodes [] = //[TGSI_OPCODE_LAST] =
 
 static char*
 get_register_dst_name(int shader_type,
-   const struct tgsi_full_dst_register *dst, int swiz)
+   const struct tgsi_full_dst_register *dst, int swiz, bool* signalDummy)
 {
    char* dstRegName[3];
    dstRegName[0] = (char*) tgsi_file_name(dst->Register.File);
@@ -1224,6 +1224,11 @@ get_register_dst_name(int shader_type,
      if(dr  && (shader_type == GL_FRAGMENT_SHADER)){
        asprintf(&dstRegNameFull, "%s%s%s.%s", dr->reg_value, dstRegName[1], dstRegName[2], dst_swizzle);
      } else {
+       if(shader_type == GL_VERTEX_SHADER){
+          //if we're writing to OUT we signal using dummy register, only will be used if the instruction is not mov
+          if(signalDummy!=NULL)
+             *signalDummy = true;
+       }
        asprintf(&dstRegNameFull, "%s%s%s.%s", dstRegName[0], dstRegName[1], dstRegName[2], dst_swizzle);
      }
    } else {
@@ -1454,7 +1459,7 @@ gen_ptx_instruction(
        }
 
       // const char* dst_swizzle = tgsi_swizzle_names[maskBit];
-       char* dstRegName = (char*)get_register_dst_name( shader_type, dst, maskBit);
+       char* dstRegName = (char*)get_register_dst_name(shader_type, dst, maskBit, NULL);
 
        fprintf(inst_stream, "%s ", dstRegName);
        if(writeMask)
@@ -1546,8 +1551,12 @@ gen_ptx_instruction(
             int dst_i;
             for(dst_i = 0; dst_i < maskBit; dst_i++){
                for (src_i = 0; src_i < inst->Instruction.NumSrcRegs; src_i++) {
+                  bool signalDummy = false;
                   const struct tgsi_full_src_register *src = &inst->Src[src_i];
-                  const char* dst_name = get_register_dst_name(shader_type, dst, dst_i);
+                  const char* dst_name = get_register_dst_name(shader_type, dst, dst_i, &signalDummy);
+                  if(signalDummy && (ptx_opcodes[opcode].name!="mov")){
+                     useDummyDst = true;
+                  }
                   const char* src_name = get_register_src_name(shader_type, src, maskBit);
                   if(0==strcmp(dst_name, src_name)){
                      printf("dst=%s, src=%s\n", dst_name, src_name);
@@ -1616,9 +1625,9 @@ gen_ptx_instruction(
           dstRegName = dpReg;*/
           free((void*) ptxInst);
           asprintf(&ptxInst, "%s", "mad.f32");
-          dstRegName = (char*)get_register_dst_name(shader_type, dst, dpBit);
+          dstRegName = (char*)get_register_dst_name(shader_type, dst, dpBit, NULL);
         } else {
-          dstRegName = (char*)get_register_dst_name(shader_type, dst, maskBit);
+          dstRegName = (char*)get_register_dst_name(shader_type, dst, maskBit, NULL);
         }
 
         if(useDummyDst){
@@ -1651,7 +1660,7 @@ gen_ptx_instruction(
             bool enabled = (1 & writeMask) != 0;
             writeMask >>= 1;
             if(!enabled) continue;
-            char* dstRegName = (char*)get_register_dst_name(shader_type, dst, maskBit);
+            char* dstRegName = (char*)get_register_dst_name(shader_type, dst, maskBit, NULL);
             fprintf(inst_stream, "mov.f32 %s, %s%d;\n", dstRegName, "dummy_", maskBit);
          }
       }
@@ -1677,7 +1686,7 @@ gen_ptx_instruction(
         }
       }*/
 
-      char* dstRegName = (char*)get_register_dst_name(shader_type, dst, 0);
+      char* dstRegName = (char*)get_register_dst_name(shader_type, dst, 0, NULL);
       //if writing to color then add stp instructoin afterwards
       if(strcmp(dstRegName, "COLOR0.x") == 0) {
          fprintf(inst_stream, "BLEND_CODE\n");
