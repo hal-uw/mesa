@@ -123,7 +123,7 @@ all-local: $(dri_LTLIBRARIES)
 	$(AM_V_GEN)link_dir=$(top_builddir)/$(LIB_DIR)/gallium;         \
 	$(MKDIR_P) $${link_dir};                                        \
 	for i in $(TARGET_DRIVERS); do                                  \
-		ln -f .libs/gallium_dri.so                              \
+		ln -s .libs/gallium_dri.so                              \
 			$${link_dir}/$${i}_dri.so;                      \
 		ln -sf $${i}_dri.so                                     \
 			$${link_dir}/lib$${i}_dri.so;                   \
@@ -144,7 +144,7 @@ endif
 # gallium_dri.so in the set of final installed files.
 install-data-hook:
 	for i in $(TARGET_DRIVERS); do                                  \
-		ln -f $(DESTDIR)$(dridir)/gallium_dri.so                \
+		ln -s $(DESTDIR)$(dridir)/gallium_dri.so                \
 		      $(DESTDIR)$(dridir)/$${i}_dri.so;                 \
 	done;                                                           \
 	$(RM) $(DESTDIR)$(dridir)/gallium_dri.*;                        \

@@ -77,7 +77,7 @@ endif
 # gallium_drv_video.so in the set of final installed files.
 install-data-hook:
 	for i in $(TARGET_DRIVERS); do                                  \
-		ln -f $(DESTDIR)$(vadir)/gallium_drv_video.so                \
+		ln -s $(DESTDIR)$(vadir)/gallium_drv_video.so                \
 		      $(DESTDIR)$(vadir)/$${i}_drv_video.so;                 \
 	done;                                                           \
 	$(RM) $(DESTDIR)$(vadir)/gallium_drv_video.*

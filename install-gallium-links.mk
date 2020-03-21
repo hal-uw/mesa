@@ -19,7 +19,7 @@ all-local : .install-gallium-links
 		if test -h .libs/$$f; then			\
 			cp -d $$f $$link_dir;			\
 		else						\
-			ln -f $$f $$link_dir;			\
+			ln -s $$f $$link_dir;			\
 		fi;						\
 	done && touch $@
 endif

@@ -11,7 +11,7 @@ all-local : .install-mesa-links
 		if test -h .libs/$$f; then			\
 			cp -d $$f $(top_builddir)/$(LIB_DIR);	\
 		else						\
-			ln -f $$f $(top_builddir)/$(LIB_DIR);	\
+			ln -s $$f $(top_builddir)/$(LIB_DIR);	\
 		fi;						\
 	done && touch $@
 

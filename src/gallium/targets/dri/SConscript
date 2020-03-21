@@ -57,9 +57,9 @@ module = env.LoadableModule(
 )
 
 # vmwgfx_dri.so
-env.Command('vmwgfx_dri.so', 'gallium_dri.so', "ln -f ${SOURCE} ${TARGET}")
+env.Command('vmwgfx_dri.so', 'gallium_dri.so', "ln -s ${SOURCE} ${TARGET}")
 # swrast_dri.so
-env.Command('swrast_dri.so', 'gallium_dri.so', "ln -f ${SOURCE} ${TARGET}")
+env.Command('swrast_dri.so', 'gallium_dri.so', "ln -s ${SOURCE} ${TARGET}")
 
 env.Alias('dri-vmwgfx', module)
 env.Alias('dri-swrast', module)

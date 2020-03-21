@@ -81,10 +81,10 @@ if HAVE_COMPAT_SYMLINKS
 # Add a link to allow setting LD_LIBRARY_PATH/LIBGL_DRIVERS_PATH to /lib of the build tree.
 all-local: mesa_dri_drivers.la
 	$(AM_V_at)$(MKDIR_P) $(top_builddir)/$(LIB_DIR);
-	$(AM_V_GEN)ln -f .libs/mesa_dri_drivers.so \
+	$(AM_V_GEN)ln -s .libs/mesa_dri_drivers.so \
 			 $(top_builddir)/$(LIB_DIR)/mesa_dri_drivers.so;
 	$(AM_V_GEN)for i in $(MEGADRIVERS); do \
-		ln -f $(top_builddir)/$(LIB_DIR)/mesa_dri_drivers.so \
+		ln -s $(top_builddir)/$(LIB_DIR)/mesa_dri_drivers.so \
 		      $(top_builddir)/$(LIB_DIR)/$$i; \
 	done;
 
@@ -99,7 +99,7 @@ endif
 # mesa_dri_drivers.so in the set of final installed files.
 install-data-hook:
 	for i in $(MEGADRIVERS); do \
-		ln -f $(DESTDIR)$(dridir)/mesa_dri_drivers.so \
+		ln -s $(DESTDIR)$(dridir)/mesa_dri_drivers.so \
 		      $(DESTDIR)$(dridir)/$$i; \
 	done;
 	$(RM) $(DESTDIR)$(dridir)/mesa_dri_drivers.*

@@ -89,7 +89,7 @@ all-local: $(vdpau_LTLIBRARIES)
 		j=libvdpau_gallium.$(LIB_EXT);				\
 		k=libvdpau_$${i}.$(LIB_EXT);				\
 		l=$${k}.$(VDPAU_MAJOR).$(VDPAU_MINOR).0;		\
-		ln -f .libs/$${j}.$(VDPAU_MAJOR).$(VDPAU_MINOR).0	\
+		ln -s .libs/$${j}.$(VDPAU_MAJOR).$(VDPAU_MINOR).0	\
 		      $${link_dir}/$${l};				\
 		ln -sf $${l}						\
 		       $${link_dir}/$${k}.$(VDPAU_MAJOR).$(VDPAU_MINOR); \
@@ -114,7 +114,7 @@ install-data-hook:
 		j=libvdpau_gallium.$(LIB_EXT);				\
 		k=libvdpau_$${i}.$(LIB_EXT);				\
 		l=$${k}.$(VDPAU_MAJOR).$(VDPAU_MINOR).0;		\
-		ln -f $${dest_dir}/$${j}.$(VDPAU_MAJOR).$(VDPAU_MINOR).0 \
+		ln -s $${dest_dir}/$${j}.$(VDPAU_MAJOR).$(VDPAU_MINOR).0 \
 		      $${dest_dir}/$${l};				\
 		ln -sf $${l}						\
 		       $${dest_dir}/$${k}.$(VDPAU_MAJOR).$(VDPAU_MINOR); \
